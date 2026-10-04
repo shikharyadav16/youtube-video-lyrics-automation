@@ -1,0 +1,24 @@
+[Unit]
+Description=Spark Lyric Studio Automation Service
+Documentation=https://github.com/shikharyadav16/youtube-video-lyrics-automation
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/video-lyrics
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=10
+LimitNOFILE=65535
+
+# Environment variables
+Environment=NODE_ENV=production
+Environment=PORT=3000
+Environment=HOST=0.0.0.0
+Environment=VIDEO_ENCODER=auto
+Environment=CPU_PRESET=veryfast
+Environment=CPU_CRF=23
+
+[Install]
+WantedBy=multi-user.target

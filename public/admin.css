@@ -152,7 +152,8 @@ body {
   background-color: var(--bg-subtle);
 }
 
-.yt-status-badge {
+.yt-status-badge,
+.engine-status-badge {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -162,6 +163,16 @@ body {
   border-radius: var(--radius-pill);
   border: 1px solid var(--border-light);
   background: var(--bg-card);
+}
+
+.engine-status-badge .status-dot.nvenc {
+  background-color: var(--status-success-text);
+  box-shadow: 0 0 6px rgba(46, 125, 50, 0.4);
+}
+
+.engine-status-badge .status-dot.cpu {
+  background-color: #0071e3;
+  box-shadow: 0 0 6px rgba(0, 113, 227, 0.3);
 }
 
 .status-dot {

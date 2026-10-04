@@ -262,6 +262,26 @@ export async function generateThumbnail({
   outPath,
   ffmpegExe,
 }) {
+  const isWin = process.platform === "win32";
+  const binaryNames = isWin ? ["ffmpeg.exe", "ffmpeg"] : ["ffmpeg", "ffmpeg.exe"];
+  let finalFfmpeg = ffmpegExe;
+  if (!finalFfmpeg) {
+    if (process.env.FFMPEG_PATH && fs.existsSync(process.env.FFMPEG_PATH)) {
+      finalFfmpeg = process.env.FFMPEG_PATH;
+    } else {
+      for (const name of binaryNames) {
+        const gpuBin = path.join(__dirname, "ffmpeg", "bin", name);
+        if (fs.existsSync(gpuBin)) { finalFfmpeg = gpuBin; break; }
+        const localBin = path.join(__dirname, "bin", name);
+        if (fs.existsSync(localBin)) { finalFfmpeg = localBin; break; }
+      }
+      if (!finalFfmpeg && !isWin) {
+        if (fs.existsSync("/usr/bin/ffmpeg")) finalFfmpeg = "/usr/bin/ffmpeg";
+      }
+      if (!finalFfmpeg) finalFfmpeg = "ffmpeg";
+    }
+  }
+
   const bgPath = path.join(DIRS.backgrounds, bgFilename);
   if (!fs.existsSync(bgPath)) {
     throw new Error(`Background file not found: ${bgPath}`);
@@ -354,7 +374,7 @@ ${singerInfo ? `Dialogue: 0,0:00:00.00,0:00:10.00,Singer,,0,0,0,,{\\an5\\pos(960
       outPath,
     ];
 
-    const proc = spawn(ffmpegExe, args);
+    const proc = spawn(finalFfmpeg, args);
     proc.on("close", (code) => {
       try {
         if (fs.existsSync(thumbAssPath)) fs.unlinkSync(thumbAssPath);

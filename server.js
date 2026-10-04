@@ -16,8 +16,9 @@ import CryptoJS from "crypto-js";
 import { Readable } from "node:stream";
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
 import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import https from "node:https";
 import http from "node:http";
 import dns from "node:dns";
@@ -47,6 +48,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 
 // Directories
 const DIRS = {
@@ -63,20 +65,133 @@ for (const p of Object.values(DIRS)) {
 }
 
 /* ------------------------------------------------------------------ */
-/*  FFmpeg Binary Detection (NVIDIA NVENC GPU Acceleration)           */
+/*  Cross-Platform FFmpeg Detection & Hardware Acceleration Probing  */
 /* ------------------------------------------------------------------ */
 function getFFmpegPath() {
-  // 1. Prioritize user's NVIDIA NVENC FFmpeg binary in ./ffmpeg/bin/ffmpeg.exe
-  const gpuBin = path.join(__dirname, "ffmpeg", "bin", "ffmpeg.exe");
-  if (fs.existsSync(gpuBin)) return gpuBin;
+  if (process.env.FFMPEG_PATH && fs.existsSync(process.env.FFMPEG_PATH)) {
+    return process.env.FFMPEG_PATH;
+  }
 
-  // 2. Fallback to ./bin/ffmpeg.exe
-  const localBin = path.join(DIRS.bin, "ffmpeg.exe");
-  if (fs.existsSync(localBin)) return localBin;
+  const isWin = process.platform === "win32";
+  const binaryNames = isWin ? ["ffmpeg.exe", "ffmpeg"] : ["ffmpeg", "ffmpeg.exe"];
 
-  // 3. Fallback to system PATH
+  for (const name of binaryNames) {
+    // 1. Check ./ffmpeg/bin/
+    const gpuBin = path.join(__dirname, "ffmpeg", "bin", name);
+    if (fs.existsSync(gpuBin)) return gpuBin;
+
+    // 2. Check ./bin/
+    const localBin = path.join(DIRS.bin, name);
+    if (fs.existsSync(localBin)) return localBin;
+  }
+
+  // 3. Common Linux system paths (Ubuntu 24.04 / Debian)
+  if (!isWin) {
+    const linuxPaths = ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg", "/snap/bin/ffmpeg"];
+    for (const lp of linuxPaths) {
+      if (fs.existsSync(lp)) return lp;
+    }
+  }
+
+  // 4. Default to system PATH
   return "ffmpeg";
 }
+
+const ENCODER_INFO = {
+  tested: false,
+  hasNvenc: false,
+  activeMode: "cpu", // "nvenc" or "cpu"
+  preferredEncoder: "libx264",
+  ffmpegPath: getFFmpegPath(),
+  isFreeTierCpu: os.cpus().length <= 2,
+  cpuPreset: "veryfast",
+  cpuCrf: "23",
+  cpuThreads: "0",
+  cpuCores: os.cpus().length,
+  cpuModel: os.cpus()[0]?.model || "Unknown CPU",
+  osInfo: `${os.type()} ${os.release()} (${os.arch()})`,
+};
+
+function ensureLinuxFontRegistration() {
+  if (process.platform === "win32") return;
+  try {
+    const homeDir = os.homedir();
+    const linuxFontDir = path.join(homeDir, ".local", "share", "fonts");
+    const fontSrc = path.join(DIRS.assets, "fonts", "edosz.ttf");
+    const target = path.join(linuxFontDir, "edosz.ttf");
+    if (fs.existsSync(fontSrc) && !fs.existsSync(target)) {
+      fs.mkdirSync(linuxFontDir, { recursive: true });
+      fs.copyFileSync(fontSrc, target);
+      spawnSync("fc-cache", ["-f"], { stdio: "ignore" });
+      console.log("[fonts] Automatically registered Edo font with fontconfig on Linux");
+    }
+  } catch (err) {
+    console.warn("[fonts] Linux font auto-registration notice:", err.message);
+  }
+}
+ensureLinuxFontRegistration();
+
+function detectHardwareAcceleration() {
+  const ffmpegExe = getFFmpegPath();
+  ENCODER_INFO.ffmpegPath = ffmpegExe;
+  ENCODER_INFO.isFreeTierCpu = os.cpus().length <= 2;
+  ENCODER_INFO.cpuPreset = process.env.CPU_PRESET || (ENCODER_INFO.isFreeTierCpu ? "veryfast" : "faster");
+  ENCODER_INFO.cpuCrf = process.env.CPU_CRF || "23";
+  ENCODER_INFO.cpuThreads = process.env.CPU_THREADS || (ENCODER_INFO.isFreeTierCpu ? String(os.cpus().length) : "0");
+
+  const envOverride = (process.env.VIDEO_ENCODER || "").toLowerCase();
+  if (envOverride === "cpu" || envOverride === "libx264") {
+    ENCODER_INFO.tested = true;
+    ENCODER_INFO.hasNvenc = false;
+    ENCODER_INFO.activeMode = "cpu";
+    ENCODER_INFO.preferredEncoder = "libx264";
+    console.log(`[encoder] VIDEO_ENCODER=cpu override active. Using libx264 (${ENCODER_INFO.cpuPreset} preset, ${ENCODER_INFO.cpuThreads} threads).`);
+    return;
+  }
+
+  console.log(`[encoder] Probing hardware acceleration on ${os.platform()} (${ENCODER_INFO.cpuCores} vCPUs)...`);
+
+  try {
+    const probe = spawnSync(
+      ffmpegExe,
+      [
+        "-v",
+        "error",
+        "-f",
+        "lavfi",
+        "-i",
+        "color=c=black:s=256x256:d=0.1",
+        "-c:v",
+        "h264_nvenc",
+        "-f",
+        "null",
+        "-",
+      ],
+      { timeout: 8000 }
+    );
+
+    if (probe.status === 0) {
+      ENCODER_INFO.hasNvenc = true;
+      ENCODER_INFO.activeMode = "nvenc";
+      ENCODER_INFO.preferredEncoder = "h264_nvenc";
+      console.log(`[encoder] ✔ NVIDIA NVENC hardware acceleration verified & ready! (RTX GPU detected)`);
+    } else {
+      ENCODER_INFO.hasNvenc = false;
+      ENCODER_INFO.activeMode = "cpu";
+      ENCODER_INFO.preferredEncoder = "libx264";
+      console.log(`[encoder] ℹ No NVENC hardware detected or probe failed. Configured for CPU operation (libx264 ${ENCODER_INFO.cpuPreset} preset, ${ENCODER_INFO.cpuThreads} threads).`);
+    }
+  } catch (err) {
+    ENCODER_INFO.hasNvenc = false;
+    ENCODER_INFO.activeMode = "cpu";
+    ENCODER_INFO.preferredEncoder = "libx264";
+    console.log(`[encoder] ℹ Encoder probe error (${err.message}). Defaulting to CPU libx264.`);
+  }
+
+  ENCODER_INFO.tested = true;
+}
+
+detectHardwareAcceleration();
 
 /* ------------------------------------------------------------------ */
 /*  Config & Headers                                                   */
@@ -1134,13 +1249,20 @@ async function executeRenderPipeline(
 
   // 3. Build FFmpeg Filter Chain
   job.status = "rendering";
-  job.message = "Encoding 1080p 60fps MP4 video with FFmpeg NVENC...";
+  const willUseNvenc = ENCODER_INFO.hasNvenc && process.env.VIDEO_ENCODER !== "cpu";
+  job.encoderMode = willUseNvenc ? "nvenc" : "cpu";
+  job.message = willUseNvenc
+    ? "Encoding 1080p 60fps MP4 video with FFmpeg NVENC (RTX 2050)..."
+    : `Encoding 1080p MP4 video with FFmpeg CPU (libx264 ${ENCODER_INFO.cpuPreset})...`;
   job.percent = 30;
 
   const outFilename = `lyric_video_${jobId}.mp4`;
   const outFilePath = path.join(DIRS.output, outFilename);
 
-  const fps = options.fps === 30 ? 30 : 60;
+  const defaultFps = willUseNvenc ? 60 : (Number(process.env.DEFAULT_FPS) || 30);
+  const maxFps = Number(process.env.MAX_FPS) || 60;
+  const requestedFps = options.fps ? Number(options.fps) : defaultFps;
+  const fps = Math.min(maxFps, requestedFps === 30 ? 30 : 60);
   const bgDarkness = Math.max(
     0,
     Math.min(1, Number(options.bgDarkness ?? 0)),
@@ -1195,10 +1317,18 @@ async function executeRenderPipeline(
   }
 
   return new Promise((resolve, reject) => {
-    function runEncoder(useNvenc = true) {
+    function runEncoder(useNvenc = willUseNvenc) {
+      job.encoderMode = useNvenc ? "nvenc" : "cpu";
       const videoEncoderArgs = useNvenc
         ? ["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "20"]
-        : ["-c:v", "libx264", "-preset", "faster", "-crf", "21"];
+        : [
+            "-c:v", "libx264",
+            "-preset", ENCODER_INFO.cpuPreset,
+            "-crf", ENCODER_INFO.cpuCrf,
+            "-threads", ENCODER_INFO.cpuThreads,
+          ];
+
+      const audioBitrate = process.env.AUDIO_BITRATE || (useNvenc ? "320k" : (ENCODER_INFO.isFreeTierCpu ? "192k" : "256k"));
 
       const ffmpegArgs = [
         "-y",
@@ -1222,14 +1352,14 @@ async function executeRenderPipeline(
         "-c:a",
         "aac",
         "-b:a",
-        "320k",
+        audioBitrate,
         "-shortest",
         "-movflags",
         "+faststart",
         outFilePath,
       ];
 
-      console.log(`[render] Starting FFmpeg (${useNvenc ? "NVIDIA NVENC RTX 2050 GPU" : "CPU libx264"}):`, ffmpegArgs.join(" "));
+      console.log(`[render] Starting FFmpeg (${useNvenc ? "NVIDIA NVENC RTX 2050 GPU" : `CPU libx264 ${ENCODER_INFO.cpuPreset}`}):`, ffmpegArgs.join(" "));
 
       const proc = spawn(ffmpegExe, ffmpegArgs);
       const stderrLines = [];
@@ -1250,13 +1380,13 @@ async function executeRenderPipeline(
             Math.max(30, Math.floor(30 + (curSeconds / songDurationSec) * 68)),
           );
           job.percent = pct;
-          job.message = `Rendering frames (NVENC GPU): ${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]} / ${Math.floor(songDurationSec / 60)}:${String(Math.floor(songDurationSec % 60)).padStart(2, "0")}`;
+          job.message = `Rendering frames (${useNvenc ? "NVENC RTX GPU" : `CPU libx264 ${ENCODER_INFO.cpuPreset}`}): ${timeMatch[1]}:${timeMatch[2]}:${timeMatch[3]} / ${Math.floor(songDurationSec / 60)}:${String(Math.floor(songDurationSec % 60)).padStart(2, "0")}`;
         }
       });
 
       proc.on("error", (err) => {
         if (useNvenc) {
-          console.warn("[render] NVENC spawn failed, falling back to libx264:", err.message);
+          console.warn("[render] NVENC spawn failed, falling back to libx264 CPU encoder:", err.message);
           runEncoder(false);
           return;
         }
@@ -1278,7 +1408,7 @@ async function executeRenderPipeline(
           job.message = "Video generated successfully!";
           job.outputFile = outFilename;
           job.outputUrl = `/output/${outFilename}`;
-          console.log(`[render] Job ${jobId} finished successfully via ${useNvenc ? "NVENC GPU" : "CPU"}!`);
+          console.log(`[render] Job ${jobId} finished successfully via ${useNvenc ? "NVENC GPU" : `CPU (${ENCODER_INFO.cpuPreset})`}!`);
 
           if (onComplete) {
             try {
@@ -1291,8 +1421,8 @@ async function executeRenderPipeline(
           resolve(outFilename);
         } else {
           const lastErr = stderrLines.slice(-3).join(" ").trim();
-          if (useNvenc && /nvenc|cuda|nvcuda|device/i.test(lastErr)) {
-            console.warn(`[render] NVENC failed (${lastErr}), retrying with libx264 CPU fallback...`);
+          if (useNvenc && /nvenc|cuda|nvcuda|device|not supported|driver/i.test(lastErr)) {
+            console.warn(`[render] NVENC runtime failed (${lastErr}), retrying with libx264 CPU fallback...`);
             runEncoder(false);
             return;
           }
@@ -1310,7 +1440,7 @@ async function executeRenderPipeline(
       });
     }
 
-    runEncoder(true);
+    runEncoder(willUseNvenc);
   });
 }
 
@@ -1383,6 +1513,12 @@ const automationQueue = {
 function getQueueSnapshot() {
   return {
     isProcessing: Boolean(automationQueue.activeJob),
+    engine: {
+      hasNvenc: ENCODER_INFO.hasNvenc,
+      activeMode: ENCODER_INFO.activeMode,
+      preferredEncoder: ENCODER_INFO.preferredEncoder,
+      cpuPreset: ENCODER_INFO.cpuPreset,
+    },
     activeJob: automationQueue.activeJob
       ? {
           id: automationQueue.activeJob.id,
@@ -1393,6 +1529,7 @@ function getQueueSnapshot() {
           message: automationQueue.activeJob.message,
           thumbUrl: automationQueue.activeJob.thumbUrl,
           startedAt: automationQueue.activeJob.startedAt,
+          encoderMode: automationQueue.activeJob.encoderMode || ENCODER_INFO.activeMode,
         }
       : null,
     queue: automationQueue.waitingQueue.map((j, idx) => ({
@@ -1434,7 +1571,9 @@ async function runAutomationPipelineForJob(job) {
   job.thumbUrl = `/output/${thumbFilename}`;
   job.thumbnailReady = true;
   job.percent = 25;
-  job.message = "1080p custom thumbnail generated! Starting 60fps NVENC video encoding...";
+  job.message = ENCODER_INFO.hasNvenc
+    ? "1080p custom thumbnail generated! Starting 60fps NVENC video encoding..."
+    : `1080p custom thumbnail generated! Starting CPU video encoding (${ENCODER_INFO.cpuPreset})...`;
   console.log(`[queue] Thumbnail ready for "${job.songTitle}": ${thumbFilename}`);
 
   // B. Run Video Render Pipeline
@@ -1978,13 +2117,45 @@ app.get("/api/youtube/status", (_req, res) => {
   });
 });
 
+app.get("/api/system/status", (_req, res) => {
+  res.json({
+    encoder: {
+      activeMode: ENCODER_INFO.activeMode,
+      hasNvenc: ENCODER_INFO.hasNvenc,
+      preferredEncoder: ENCODER_INFO.preferredEncoder,
+      cpuPreset: ENCODER_INFO.cpuPreset,
+      cpuThreads: ENCODER_INFO.cpuThreads,
+      cpuCrf: ENCODER_INFO.cpuCrf,
+      isFreeTierCpu: ENCODER_INFO.isFreeTierCpu,
+    },
+    system: {
+      platform: process.platform,
+      arch: os.arch(),
+      os: ENCODER_INFO.osInfo,
+      cpuModel: ENCODER_INFO.cpuModel,
+      cpuCores: ENCODER_INFO.cpuCores,
+      totalMemoryMb: Math.round(os.totalmem() / (1024 * 1024)),
+      freeMemoryMb: Math.round(os.freemem() / (1024 * 1024)),
+      uptimeSeconds: Math.floor(process.uptime()),
+    },
+    ffmpeg: {
+      path: ENCODER_INFO.ffmpegPath,
+    },
+    youtubeAuthenticated: isYouTubeAuthenticated(),
+  });
+});
+
 /* ------------------------------------------------------------------ */
 /*  Start Express Server                                               */
 /* ------------------------------------------------------------------ */
-app.listen(PORT, () => {
+app.listen(PORT, HOST, () => {
   console.log(`\n======================================================`);
   console.log(`▶ Spark Lyric Video Generator running on:`);
-  console.log(`  http://localhost:${PORT}`);
-  console.log(`  FFmpeg binary: ${getFFmpegPath()}`);
+  console.log(`  Local / Server: http://${HOST === "0.0.0.0" ? "localhost" : HOST}:${PORT}`);
+  console.log(`  Host Binding:   ${HOST}:${PORT}`);
+  console.log(`  OS Platform:    ${ENCODER_INFO.osInfo}`);
+  console.log(`  Engine Mode:    ${ENCODER_INFO.hasNvenc ? "NVIDIA NVENC (RTX 2050 GPU)" : `CPU libx264 (${ENCODER_INFO.cpuPreset} preset, ${ENCODER_INFO.cpuThreads} threads)`}`);
+  console.log(`  CPU Cores:      ${ENCODER_INFO.cpuCores} vCPU (${ENCODER_INFO.isFreeTierCpu ? "Free-Tier / Low Resource Mode" : "Standard Multi-Core"})`);
+  console.log(`  FFmpeg binary:  ${ENCODER_INFO.ffmpegPath}`);
   console.log(`======================================================\n`);
 });

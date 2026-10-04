@@ -353,6 +353,66 @@ npm start
 
 ---
 
+## 🐧 Ubuntu 24.04 & Free-Tier Cloud Server Deployment
+
+The codebase is built with an **adaptive dual-engine architecture**:
+- **On Local Windows / RTX 2050 GPU**: Automatically probes and leverages NVIDIA NVENC hardware acceleration (`h264_nvenc`, 60 FPS, NVENC preset `p4`) for ultra-fast rendering.
+- **On Ubuntu 24.04 (Free-Tier VPS / CPU)**: Automatically detects headless/CPU environment and configures optimized `libx264` CPU encoding (`veryfast` preset, CRF 23, auto-threads) designed to run within 1-2 vCPU and 1GB RAM limits without crashes or stalls.
+
+### Quick Setup on Ubuntu 24.04 LTS (1 Command)
+Run the included automated provisioning script on your remote server:
+```bash
+chmod +x setup_ubuntu.sh
+./setup_ubuntu.sh
+```
+This script automatically:
+1. Installs FFmpeg, libass, fontconfig, and build tools via `apt`.
+2. Installs Node.js 20 LTS via NodeSource.
+3. Copies and registers `edosz.ttf` with fontconfig (`fc-cache -f`).
+4. Creates necessary working directories (`output/`, `temp/`, `credentials/`, `logs/`).
+5. Installs production Node dependencies.
+6. Probes hardware acceleration and verifies encoder capabilities.
+
+### 24/7 Service with PM2 (Recommended)
+```bash
+# Install PM2 globally
+sudo npm install -g pm2
+
+# Start with production configuration (auto-restart, OOM protection)
+pm2 start ecosystem.config.cjs
+
+# Save PM2 state and configure auto-start on boot
+pm2 save
+pm2 startup
+```
+
+### Alternatively: Native Systemd Service
+```bash
+sudo cp spark-lyrics.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable spark-lyrics
+sudo systemctl start spark-lyrics
+sudo systemctl status spark-lyrics
+```
+
+### Free-Tier Environment Variables (.env)
+You can tune CPU operation via `.env` without modifying code:
+```env
+# Forces CPU or NVENC ("auto" | "nvenc" | "cpu")
+VIDEO_ENCODER=auto
+
+# CPU preset for free-tier 1-2 vCPU instances ("veryfast" recommended, "ultrafast" for low burst)
+CPU_PRESET=veryfast
+CPU_CRF=23
+CPU_THREADS=0
+
+# Default FPS on CPU (30 FPS yields 2x faster encoding on free-tier VPS; 60 on NVENC)
+DEFAULT_FPS=30
+MAX_FPS=60
+```
+
+---
+
 ## 📡 API Reference
 
 ### Studio & Rendering
@@ -373,3 +433,5 @@ npm start
 - `GET /api/backgrounds`: List all background images available in `assets/background/`.
 - `GET /api/youtube/auth-url`: Generate YouTube OAuth consent URL.
 - `GET /api/youtube/status`: Check if YouTube token is active and valid.
+- `GET /api/system/status`: Real-time system hardware, active encoder (NVENC vs CPU), CPU cores, and memory usage.
+

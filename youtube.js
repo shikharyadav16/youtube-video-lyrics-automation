@@ -33,7 +33,10 @@ export function getOAuth2Client() {
       return null;
     }
 
-    const redirectUri = (cfg.redirect_uris && cfg.redirect_uris[0]) || "http://localhost:3000/oauth2callback";
+    const redirectUri =
+      process.env.YOUTUBE_REDIRECT_URI ||
+      (cfg.redirect_uris && cfg.redirect_uris[0]) ||
+      "http://localhost:3000/oauth2callback";
 
     oauth2Client = new google.auth.OAuth2(
       cfg.client_id,

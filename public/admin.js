@@ -14,6 +14,9 @@ const state = {
 
 // DOM Cache
 const dom = {
+  engineStatusBadge: document.getElementById("engineStatusBadge"),
+  engineStatusDot: document.getElementById("engineStatusDot"),
+  engineStatusText: document.getElementById("engineStatusText"),
   ytStatusDot: document.getElementById("ytStatusDot"),
   ytStatusText: document.getElementById("ytStatusText"),
   ytConnectBtn: document.getElementById("ytConnectBtn"),
@@ -87,6 +90,36 @@ function showBanner(type, message) {
 function clearBanner() {
   dom.responseBanner.className = "response-banner";
   dom.responseBanner.textContent = "";
+}
+
+// Check Engine & System Status (NVENC GPU vs CPU)
+async function checkSystemEngineStatus() {
+  try {
+    const res = await fetch("/api/system/status");
+    if (!res.ok) return;
+    const data = await res.json();
+    window.__serverEngine = data.encoder;
+    window.__serverSystem = data.system;
+
+    const dot = dom.engineStatusDot || document.getElementById("engineStatusDot");
+    const text = dom.engineStatusText || document.getElementById("engineStatusText");
+    const badge = dom.engineStatusBadge || document.getElementById("engineStatusBadge");
+
+    if (dot && text) {
+      if (data.encoder.hasNvenc) {
+        dot.className = "status-dot nvenc";
+        text.textContent = "RTX 2050 NVENC";
+        if (badge) badge.title = `NVIDIA NVENC Hardware Accelerated (60 FPS) • ${data.system.cpuCores} vCPU`;
+      } else {
+        dot.className = "status-dot cpu";
+        const preset = data.encoder.cpuPreset || "veryfast";
+        text.textContent = `CPU libx264 (${preset})`;
+        if (badge) badge.title = `Ubuntu / CPU Tier • Preset: ${preset} • Threads: ${data.encoder.cpuThreads} • ${data.system.cpuCores} vCPU`;
+      }
+    }
+  } catch (err) {
+    console.warn("System engine status check error:", err);
+  }
 }
 
 // Check YouTube Auth Status
@@ -324,12 +357,16 @@ async function pollJobStatus(jobId, song) {
         dom.resultThumb.src = job.thumbUrl;
       }
 
+      const engineLabel = (job.encoderMode === "nvenc" || window.__serverEngine?.hasNvenc)
+        ? "60 FPS NVENC (GPU)"
+        : `CPU libx264 (${window.__serverEngine?.cpuPreset || "veryfast"})`;
+
       if (job.youtubeUploaded) {
         if (dom.resultThumbBadge) {
           dom.resultThumbBadge.textContent = "Live on YouTube";
           dom.resultThumbBadge.className = "thumb-status-badge live";
         }
-        dom.resultMeta.textContent = `${job.singer || song?.singer || ""} | 60 FPS NVENC | YouTube Upload Complete`;
+        dom.resultMeta.textContent = `${job.singer || song?.singer || ""} | ${engineLabel} | YouTube Upload Complete`;
         if (dom.resultCleanStatus) {
           dom.resultCleanStatus.style.display = "block";
           dom.resultCleanStatus.textContent = "Output video & thumbnail cleaned up after successful YouTube upload.";
@@ -345,7 +382,7 @@ async function pollJobStatus(jobId, song) {
           dom.resultThumbBadge.textContent = "Render Complete";
           dom.resultThumbBadge.className = "thumb-status-badge";
         }
-        dom.resultMeta.textContent = `${job.singer || song?.singer || ""} | 60 FPS NVENC`;
+        dom.resultMeta.textContent = `${job.singer || song?.singer || ""} | ${engineLabel}`;
         if (dom.resultCleanStatus) dom.resultCleanStatus.style.display = "none";
         if (job.outputUrl) {
           dom.resultVideoDownload.href = job.outputUrl;
@@ -1347,6 +1384,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setupCustomFontDropdowns();
   initThumbnailLiveComposer();
 
+  await checkSystemEngineStatus();
   await checkYouTubeStatus();
   await loadLibrary();
   await loadFailedSongs();
