@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spark Studio — Automated Synchronized Lyric Video Generator</title>
+  <meta name="description" content="Generate stunning YouTube 16:9 lyric videos with synchronized typography animations, background blur, darkness overlay, and embedded high-quality audio using FFmpeg.">
+  
+  <!-- Comprehensive 35 Modern Fonts from Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Black+Ops+One&family=Bungee&family=Caveat:wght@600;700&family=Cinzel:wght@700&family=Comfortaa:wght@700&family=Cormorant+Garamond:wght@700&family=Courgette&family=Indie+Flower&family=Inter:wght@400;600;700;800;900&family=Kalam:wght@700&family=Kanit:wght@700;800&family=Lexend:wght@700;800&family=Manrope:wght@700;800&family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Nunito:wght@700;800;900&family=Oswald:wght@500;700&family=Outfit:wght@400;600;700;800&family=Pacifico&family=Permanent+Marker&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@700;800&family=Poppins:wght@400;600;700;800;900&family=Raleway:wght@700;800;900&family=Righteous&family=Rubik+Mono+One&family=Russo+One&family=Satisfy&family=Shadows+Into+Light&family=Space+Grotesk:wght@600;700&family=Syne:wght@700;800&family=Urbanist:wght@700;800&display=swap" rel="stylesheet">
+  
+  <!-- FontAwesome Icons for crisp UI -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  
+  <link rel="stylesheet" href="style.css?v=1.3">
+</head>
+<body>
+  <!-- Header Bar -->
+  <header class="studio-header">
+    <div class="brand">
+      <div class="brand-icon">
+        <i class="fa-solid fa-bolt-lightning"></i>
+      </div>
+      <div>
+        <h1 class="brand-title">Spark <span>Studio</span></h1>
+        <p class="brand-tagline">Automated 16:9 YouTube Lyric Video Generator &bull; Powered by FFmpeg</p>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <a href="/admin.html" class="btn btn-secondary" style="text-decoration: none;" title="Open Admin Automation Dashboard">
+        Admin Automation
+      </a>
+      <button class="btn btn-secondary" id="btnQuickDemo">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Load Demo Track
+      </button>
+      <button class="btn btn-primary btn-glow" id="btnGenerateVideoTop">
+        <i class="fa-solid fa-film"></i> Export MP4
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Studio Layout -->
+  <main class="studio-container">
+    
+    <!-- LEFT PANEL: Search, Audio Track & Synced Lyrics Editor -->
+    <aside class="panel left-panel">
+      <div class="panel-tabs">
+        <button class="tab-btn active" data-tab="tabSearch">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Songs
+        </button>
+        <button class="tab-btn" data-tab="tabLyrics">
+          <i class="fa-solid fa-music"></i> Lyrics & Sync (<span id="lyricsCountBadge">0</span>)
+        </button>
+      </div>
+
+      <!-- Tab 1: Song Search -->
+      <div class="tab-content active" id="tabSearch">
+        <div class="search-box-wrapper">
+          <div class="search-input-group">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search JioSaavn (e.g. Millionaire, Starboy, Kesariya)..." value="Millionaire">
+            <button id="btnSearch" class="btn btn-search">
+              <span>Search</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Currently Active Song Card -->
+        <div class="active-song-card" id="activeSongCard" style="display: none;">
+          <img id="activeSongArt" src="" alt="Album Art" class="song-art">
+          <div class="song-details">
+            <div class="active-badge"><span class="pulse-dot"></span> CURRENT TRACK</div>
+            <h3 id="activeSongTitle" class="song-title">Song Title</h3>
+            <p id="activeSongArtist" class="song-artist">Artist Name</p>
+            <div class="song-meta-chips">
+              <span id="activeSongQuality" class="chip chip-gold"><i class="fa-solid fa-bolt"></i> 320kbps</span>
+              <span id="activeSongDuration" class="chip chip-dim">0:00</span>
+              <span id="activeLyricsSource" class="chip chip-cyan"><i class="fa-solid fa-check"></i> Synced</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Results List -->
+        <div class="results-header">
+          <span id="resultsCount">Search JioSaavn songs:</span>
+          <span class="results-sub">Click to load audio & synced lyrics</span>
+        </div>
+        <div class="song-list" id="searchResultsList">
+          <div class="empty-state">
+            <i class="fa-solid fa-compact-disc fa-spin-pulse"></i>
+            <p>Type a song name above or click Search to find tracks</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Synced Lyrics Timeline & Editor -->
+      <div class="tab-content" id="tabLyrics">
+        <div class="lyrics-toolbar">
+          <div class="toolbar-info">
+            <span class="info-label"><i class="fa-solid fa-clock"></i> Click line to seek audio</span>
+          </div>
+          <div class="toolbar-buttons">
+            <button class="btn btn-tiny" id="btnAddLine"><i class="fa-solid fa-plus"></i> Add Line</button>
+            <button class="btn btn-tiny" id="btnToggleLrcRaw"><i class="fa-solid fa-code"></i> Raw LRC</button>
+          </div>
+        </div>
+
+        <!-- Synced Lines Timeline -->
+        <div class="lyrics-timeline-container" id="lyricsTimeline">
+          <div class="empty-lyrics">
+            <i class="fa-regular fa-comment-dots"></i>
+            <p>No lyrics loaded yet. Search and select a song from the Search tab.</p>
+          </div>
+        </div>
+
+        <!-- Raw LRC Textarea (collapsible) -->
+        <div class="raw-lrc-container" id="rawLrcContainer" style="display: none;">
+          <textarea id="rawLrcText" placeholder="Paste standard LRC format: [00:12.34] lyric text..."></textarea>
+          <button class="btn btn-secondary btn-small" id="btnApplyRawLrc">Apply LRC Edits</button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER PANEL: 16:9 YouTube Stage Preview & Audio Player -->
+    <section class="panel center-panel">
+      <div class="stage-header">
+        <div class="stage-title-wrap">
+          <span class="badge-ratio">16:9 &bull; 1920x1080</span>
+          <span class="stage-mode-title" id="stageModeTitle">Live Preview</span>
+        </div>
+        <div class="stage-controls-top">
+          <button class="btn-icon" id="btnToggleFullPreview" title="Fullscreen Preview">
+            <i class="fa-solid fa-expand"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- 16:9 Video Canvas Viewport -->
+      <div class="stage-viewport-outer">
+        <div class="stage-canvas-16-9" id="stageCanvas">
+          
+          <!-- Background Image Layer -->
+          <div class="stage-bg-layer" id="stageBgLayer"></div>
+          
+          <!-- Background Dark / Color Overlay -->
+          <div class="stage-dark-overlay" id="stageDarkOverlay"></div>
+          
+          <!-- Vignette Effect Layer -->
+          <div class="stage-vignette" id="stageVignette"></div>
+
+          <!-- Lyrics Display Stage -->
+          <div class="stage-lyrics-wrapper" id="stageLyricsWrapper">
+            <!-- Active Lyric Line -->
+            <div class="stage-lyric-active" id="stageLyricActive">
+              <span class="lyric-text" id="stageLyricText">Ready to create your lyric video</span>
+            </div>
+            <!-- Optional Duo/Upcoming Line -->
+            <div class="stage-lyric-upcoming" id="stageLyricUpcoming" style="display: none;">
+              <span class="lyric-upcoming-text" id="stageLyricUpcomingText">Upcoming line will appear here</span>
+            </div>
+          </div>
+
+          <!-- Spark Watermark / Corner Stamp -->
+          <div class="stage-watermark">
+            <i class="fa-solid fa-bolt-lightning"></i> Spark
+          </div>
+
+          <!-- Play Overlay Icon (on pause) -->
+          <div class="stage-play-overlay" id="stagePlayOverlay">
+            <i class="fa-solid fa-play"></i>
+          </div>
+
+          <!-- 3D Audio Visualizer Layer -->
+          <div class="stage-audio3d-wrap" id="stageAudio3dWrap" style="display:none;">
+            <canvas id="stageAudio3dCanvas"></canvas>
+          </div>
+
+          <!-- Fullscreen Exit Button (visible in fullscreen) -->
+          <button class="stage-fullscreen-exit-btn" id="btnExitFullscreen" title="Exit Fullscreen">
+            <i class="fa-solid fa-compress"></i> Exit Fullscreen
+          </button>
+        </div>
+      </div>
+
+      <!-- Audio Track Playback Bar -->
+      <div class="audio-player-bar">
+        <button class="play-btn" id="btnPlayPause">
+          <i class="fa-solid fa-play" id="playIcon"></i>
+        </button>
+
+        <div class="timecode" id="currentTimecode">0:00</div>
+        
+        <div class="progress-bar-container" id="progressBarContainer">
+          <div class="progress-bar-fill" id="progressBarFill"></div>
+          <div class="progress-bar-handle" id="progressBarHandle"></div>
+        </div>
+
+        <div class="timecode" id="totalDurationTimecode">0:00</div>
+
+        <div class="volume-container">
+          <i class="fa-solid fa-volume-high" id="volIcon"></i>
+          <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.9">
+        </div>
+      </div>
+
+      <!-- Hidden Native Audio Element -->
+      <audio id="nativeAudio" preload="auto" crossorigin="anonymous"></audio>
+
+      <!-- Bottom Quick Summary & Render CTA -->
+      <div class="stage-footer-cta">
+        <div class="cta-info">
+          <div class="cta-title"><i class="fa-solid fa-wand-magic"></i> Ready to render Full HD 1080p MP4</div>
+          <div class="cta-sub">High-framerate video with embedded original audio &amp; synced animations</div>
+        </div>
+        <button class="btn btn-primary btn-large btn-glow" id="btnGenerateVideoMain">
+          <i class="fa-solid fa-video"></i> Generate Lyric Video
+        </button>
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Visual Styling & FFmpeg Adjustments Studio -->
+    <aside class="panel right-panel">
+      <div class="panel-section-title">
+        <i class="fa-solid fa-sliders"></i> Visual Adjustments
+      </div>
+
+      <div class="settings-scroll-area">
+        
+        <!-- SECTION 1: Background Selection & Fill -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label><i class="fa-solid fa-image"></i> Background (Fills Whole Screen)</label>
+            <label class="btn-upload-label" for="bgUploadInput">
+              <i class="fa-solid fa-arrow-up-from-bracket"></i> Upload
+            </label>
+            <input type="file" id="bgUploadInput" accept="image/*" style="display: none;">
+          </div>
+          
+          <!-- Background Grid Gallery from assets/background/ -->
+          <div class="bg-gallery-grid" id="bgGalleryGrid">
+            <!-- Dynamic thumbnails injected by JS -->
+          </div>
+        </div>
+
+        <!-- SECTION 2: Background Effects (Opacity, Blur, Motion) -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label><i class="fa-solid fa-wand-sparkles"></i> Background Effects</label>
+          </div>
+
+          <!-- Background Darkness / Opacity Overlay -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Darkness Overlay (Opacity)</span>
+              <span class="control-badge" id="valBgDarkness">0%</span>
+            </div>
+            <input type="range" id="sliderBgDarkness" min="0" max="90" step="5" value="0">
+            <span class="control-hint">Ensures crisp contrast and readability of lyrics</span>
+          </div>
+
+          <!-- Background Blur -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Background Blurriness</span>
+              <span class="control-badge" id="valBgBlur">0px</span>
+            </div>
+            <input type="range" id="sliderBgBlur" min="0" max="25" step="1" value="0">
+            <span class="control-hint">Soft cinematic defocus keeps focus on text</span>
+          </div>
+
+          <!-- Background Motion Effect -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Background Motion</span>
+            </div>
+            <div class="pill-group" id="motionPills">
+              <button class="pill active" data-motion="zoom">
+                <i class="fa-solid fa-arrows-to-eye"></i> Slow Zoom
+              </button>
+              <button class="pill" data-motion="static">
+                <i class="fa-regular fa-square"></i> Static
+              </button>
+              <button class="pill" data-motion="pulse">
+                <i class="fa-solid fa-heart-pulse"></i> Breathing
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 3: Typography & Fonts -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label><i class="fa-solid fa-font"></i> Typography & Fonts</label>
+          </div>
+
+          <!-- Font Category Filters -->
+          <div class="control-row">
+            <label>Genre / Style Class</label>
+            <div class="pill-group font-category-pills" id="fontCategoryPills">
+              <button class="pill active" data-cat="all">All (36)</button>
+              <button class="pill" data-cat="preferred">Preferred</button>
+              <button class="pill" data-cat="popular">Mostly Used</button>
+              <button class="pill" data-cat="hiphop">Hip-Hop</button>
+              <button class="pill" data-cat="aesthetic">Aesthetic</button>
+              <button class="pill" data-cat="cinematic">Cinematic</button>
+            </div>
+          </div>
+
+          <!-- Font Family Selector with 36 Curated Fonts -->
+          <div class="control-row">
+            <label for="selectFontFamily">Font Family</label>
+            <select id="selectFontFamily" class="select-input">
+              <optgroup label="Preferred (Spark Signature)" data-group="preferred">
+                <option value="Edo" selected style="font-family: 'Edo', sans-serif;">Edo (Expressive Brush &amp; Signature)</option>
+                <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat (Spark Signature)</option>
+                <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins (Clean &amp; Modern Pop)</option>
+                <option value="Outfit" style="font-family: 'Outfit', sans-serif;">Outfit (Geometric &amp; Bold)</option>
+                <option value="Inter" style="font-family: 'Inter', sans-serif;">Inter (Ultra Legible Standard)</option>
+                <option value="Plus Jakarta Sans" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans (Editorial Chic)</option>
+                <option value="Urbanist" style="font-family: 'Urbanist', sans-serif;">Urbanist (Sleek Minimalist)</option>
+              </optgroup>
+              
+              <optgroup label="Mostly Used (Modern Hits &amp; Pop)" data-group="popular">
+                <option value="Bebas Neue" style="font-family: 'Bebas Neue', sans-serif;">Bebas Neue (Punchy All-Caps)</option>
+                <option value="Lexend" style="font-family: 'Lexend', sans-serif;">Lexend (Modern &amp; Friendly)</option>
+                <option value="Raleway" style="font-family: 'Raleway', sans-serif;">Raleway (Sophisticated Sans)</option>
+                <option value="Nunito" style="font-family: 'Nunito', sans-serif;">Nunito (Soft Rounded Sans)</option>
+                <option value="Archivo Black" style="font-family: 'Archivo Black', sans-serif;">Archivo Black (Heavyweight Impact)</option>
+                <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope (Clean Tech Sans)</option>
+                <option value="Kanit" style="font-family: 'Kanit', sans-serif;">Kanit (Groovy Modern Bold)</option>
+                <option value="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk (Neo-Brutalist)</option>
+              </optgroup>
+
+              <optgroup label="Hip-Hop, Trap &amp; Street Energy" data-group="hiphop">
+                <option value="Bangers" style="font-family: 'Bangers', cursive;">Bangers (Comic Energy)</option>
+                <option value="Anton" style="font-family: 'Anton', sans-serif;">Anton (Bold Billboard Banner)</option>
+                <option value="Russo One" style="font-family: 'Russo One', sans-serif;">Russo One (Heavy Strike)</option>
+                <option value="Black Ops One" style="font-family: 'Black Ops One', cursive;">Black Ops One (Tactical Stencil)</option>
+                <option value="Permanent Marker" style="font-family: 'Permanent Marker', cursive;">Permanent Marker (Graffiti Tag)</option>
+                <option value="Bungee" style="font-family: 'Bungee', cursive;">Bungee (Chunky Street Sign)</option>
+                <option value="Rubik Mono One" style="font-family: 'Rubik Mono One', monospace;">Rubik Mono One (Pixel Trap Block)</option>
+              </optgroup>
+
+              <optgroup label="Aesthetic, Lofi &amp; Handwritten" data-group="aesthetic">
+                <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat (Aesthetic Handwritten)</option>
+                <option value="Pacifico" style="font-family: 'Pacifico', cursive;">Pacifico (Brush Ribbon Script)</option>
+                <option value="Shadows Into Light" style="font-family: 'Shadows Into Light', cursive;">Shadows Into Light (Delicate Marker)</option>
+                <option value="Indie Flower" style="font-family: 'Indie Flower', cursive;">Indie Flower (Cute Doodled)</option>
+                <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam (Artistic Handwritten)</option>
+                <option value="Satisfy" style="font-family: 'Satisfy', cursive;">Satisfy (Smooth Flowing Script)</option>
+                <option value="Comfortaa" style="font-family: 'Comfortaa', cursive;">Comfortaa (Cozy Rounded Minimal)</option>
+                <option value="Courgette" style="font-family: 'Courgette', cursive;">Courgette (Warm Romantic Script)</option>
+              </optgroup>
+
+              <optgroup label="Cinematic &amp; Editorial Impact" data-group="cinematic">
+                <option value="Cinzel" style="font-family: 'Cinzel', serif;">Cinzel (Epic Roman Serif)</option>
+                <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display (Luxury High-Fashion)</option>
+                <option value="Righteous" style="font-family: 'Righteous', cursive;">Righteous (Punchy Pop Retro)</option>
+                <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald (Tall &amp; Condensed)</option>
+                <option value="Syne" style="font-family: 'Syne', sans-serif;">Syne (Futuristic Avant-Garde)</option>
+                <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond (Timeless Classic)</option>
+              </optgroup>
+            </select>
+          </div>
+
+          <!-- Font Size Slider (36px to 180px, default 150px) -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Font Size</span>
+              <span class="control-badge" id="valFontSize">150px</span>
+            </div>
+            <input type="range" id="sliderFontSize" min="36" max="180" step="2" value="150">
+          </div>
+
+          <!-- Font Weight -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Font Weight</span>
+              <span class="control-badge" id="valFontWeight">800 (Heavy)</span>
+            </div>
+            <select id="selectFontWeight" class="select-input">
+              <option value="400">400 - Regular</option>
+              <option value="600">600 - Semi-Bold</option>
+              <option value="700">700 - Bold</option>
+              <option value="800" selected>800 - Extra Bold (Recommended)</option>
+              <option value="900">900 - Black (Ultra)</option>
+            </select>
+          </div>
+
+          <!-- Color Pickers Row -->
+          <div class="control-row color-pickers-row">
+            <div class="color-picker-item">
+              <label>Text Color</label>
+              <div class="color-input-wrap">
+                <input type="color" id="pickerTextColor" value="#FFFFFF">
+                <span id="labelTextColor">#FFFFFF</span>
+              </div>
+            </div>
+
+            <div class="color-picker-item">
+              <label>Outline / Stroke</label>
+              <div class="color-input-wrap">
+                <input type="color" id="pickerOutlineColor" value="#000000">
+                <span id="labelOutlineColor">#000000</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Outline Stroke Width (Default 0) -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Outline / Stroke Width</span>
+              <span class="control-badge" id="valOutlineWidth">0px</span>
+            </div>
+            <input type="range" id="sliderOutlineWidth" min="0" max="8" step="1" value="0">
+          </div>
+
+          <!-- Text Shadow / Glow Depth -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Shadow & Glow Depth</span>
+              <span class="control-badge" id="valShadowDepth">2px</span>
+            </div>
+            <input type="range" id="sliderShadowDepth" min="0" max="12" step="1" value="2">
+          </div>
+        </div>
+
+        <!-- SECTION 4: Lyric Animations & Timing Sync -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label><i class="fa-solid fa-film"></i> Lyric Animations & Timing</label>
+          </div>
+
+          <!-- Lyric Timing Sync Delay (-3.0s to +3.0s) -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Lyrics Delay / Sync Offset</span>
+              <div class="sync-delay-wrap">
+                <span class="control-badge" id="valLyricDelay">-0.3s</span>
+                <button class="btn-tiny" id="btnResetDelay" title="Reset delay to -0.3s"><i class="fa-solid fa-rotate-left"></i> -0.3s</button>
+              </div>
+            </div>
+            <input type="range" id="sliderLyricDelay" min="-3.0" max="3.0" step="0.1" value="-0.3">
+            <span class="control-hint">- values show lyrics earlier, + values delay lyrics (-3.0s to +3.0s)</span>
+          </div>
+
+          <!-- Animation Presets -->
+          <div class="control-row">
+            <label>Transition Style</label>
+            <div class="pill-group" id="animPills">
+              <button class="pill active" data-anim="pop">
+                <i class="fa-solid fa-burst"></i> Pop
+              </button>
+              <button class="pill" data-anim="slide">
+                <i class="fa-solid fa-arrow-up"></i> Slide Up
+              </button>
+              <button class="pill" data-anim="fade">
+                <i class="fa-solid fa-droplet"></i> Crossfade
+              </button>
+              <button class="pill" data-anim="bounce">
+                <i class="fa-solid fa-basketball"></i> Bounce
+              </button>
+              <button class="pill" data-anim="zoom">
+                <i class="fa-solid fa-magnifying-glass-plus"></i> Zoom In
+              </button>
+              <button class="pill" data-anim="glitch">
+                <i class="fa-solid fa-code"></i> Glitch
+              </button>
+              <button class="pill" data-anim="typewriter">
+                <i class="fa-solid fa-keyboard"></i> Typewriter
+              </button>
+              <button class="pill" data-anim="blur">
+                <i class="fa-solid fa-eye-low-vision"></i> Blur In
+              </button>
+              <button class="pill" data-anim="glow">
+                <i class="fa-solid fa-sun"></i> Rise Glow
+              </button>
+              <button class="pill" data-anim="flip">
+                <i class="fa-solid fa-rotate"></i> Flip In
+              </button>
+              <button class="pill" data-anim="swing">
+                <i class="fa-solid fa-anchor"></i> Swing
+              </button>
+            </div>
+            <span class="control-hint" id="animHint">Pop: Smoothly scales from 92% with subtle fade</span>
+          </div>
+
+          <!-- Lines Visible Mode -->
+          <div class="control-row">
+            <label>Displayed Lines</label>
+            <div class="pill-group" id="linesModePills">
+              <button class="pill active" data-lines="single">
+                <i class="fa-regular fa-eye"></i> 1 Line (Classic)
+              </button>
+              <button class="pill" data-lines="duo">
+                <i class="fa-solid fa-bars-staggered"></i> 2 Lines (+ Upcoming)
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECTION 4b: 3D Audio Experience & Visualizer -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label class="audio3d-label">
+              <i class="fa-solid fa-headphones"></i>
+              Convert to 3D Audio
+              <span class="audio3d-badge">SPATIAL 3D</span>
+            </label>
+            <label class="toggle-switch" title="Convert to 3D Audio Experience">
+              <input type="checkbox" id="toggle3DAudio">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+
+          <!-- 3D Audio sub-options (shown when toggle is on) -->
+          <div class="audio3d-options" id="audio3dOptions">
+            <div class="audio3d-tip">
+              <i class="fa-solid fa-headphones"></i> Headphones recommended for 360° binaural immersion!
+            </div>
+
+            <!-- 3D Audio Sound Style -->
+            <div class="control-row">
+              <label>3D Audio Style</label>
+              <div class="pill-group" id="audio3dSoundPills">
+                <button class="pill active" data-sound3d="orbit"><i class="fa-solid fa-arrows-spin"></i> 8D Orbit</button>
+                <button class="pill" data-sound3d="wide"><i class="fa-solid fa-expand"></i> Wide 360</button>
+                <button class="pill" data-sound3d="concert"><i class="fa-solid fa-landmark"></i> Concert Hall</button>
+                <button class="pill" data-sound3d="slow"><i class="fa-solid fa-wind"></i> Slow Flow</button>
+                <button class="pill" data-sound3d="cyber"><i class="fa-solid fa-bolt"></i> Cyber Bass</button>
+              </div>
+              <span class="control-hint" id="audio3dHint">8D Orbit: Rotates 360° continuously around your head</span>
+            </div>
+
+            <!-- 3D Orbit Speed -->
+            <div class="control-row" id="row3dSpeed">
+              <div class="control-label-val">
+                <span>Orbit Speed / Panning Rate</span>
+                <span class="control-badge" id="val3DSpeed">1.0x</span>
+              </div>
+              <input type="range" id="slider3DSpeed" min="0.3" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <!-- Visualizer Style -->
+            <div class="control-row">
+              <label>Stage Visualizer Style</label>
+              <div class="pill-group" id="audio3dStylePills">
+                <button class="pill active" data-3dstyle="bars"><i class="fa-solid fa-chart-column"></i> Bars</button>
+                <button class="pill" data-3dstyle="wave"><i class="fa-solid fa-water"></i> Wave</button>
+                <button class="pill" data-3dstyle="mirror"><i class="fa-solid fa-arrows-left-right-to-line"></i> Mirror</button>
+                <button class="pill" data-3dstyle="circle"><i class="fa-regular fa-circle"></i> Circle</button>
+                <button class="pill" data-3dstyle="dots"><i class="fa-solid fa-ellipsis"></i> Dots</button>
+              </div>
+            </div>
+
+            <!-- Color Theme -->
+            <div class="control-row">
+              <label>Visualizer Color</label>
+              <div class="pill-group" id="audio3dColorPills">
+                <button class="pill active" data-3dcolor="cyan">Cyan</button>
+                <button class="pill" data-3dcolor="purple">Purple</button>
+                <button class="pill" data-3dcolor="fire">Fire</button>
+                <button class="pill" data-3dcolor="rainbow">Rainbow</button>
+                <button class="pill" data-3dcolor="white">White</button>
+              </div>
+            </div>
+
+            <!-- Intensity -->
+            <div class="control-row">
+              <div class="control-label-val">
+                <span>Visualizer Sensitivity</span>
+                <span class="control-badge" id="val3DIntensity">1.5x</span>
+              </div>
+              <input type="range" id="slider3DIntensity" min="0.5" max="3.5" step="0.1" value="1.5">
+            </div>
+
+            <!-- Smoothing -->
+            <div class="control-row">
+              <div class="control-label-val">
+                <span>Smoothing</span>
+                <span class="control-badge" id="val3DSmooth">75%</span>
+              </div>
+              <input type="range" id="slider3DSmooth" min="0" max="98" step="1" value="75">
+              <span class="control-hint">Higher = smoother, slower response</span>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SECTION 5: Video Export Settings -->
+        <div class="settings-group">
+          <div class="group-header">
+            <label><i class="fa-solid fa-video"></i> Video Output Format</label>
+          </div>
+
+          <div class="control-row">
+            <label>Resolution & Aspect Ratio</label>
+            <div class="resolution-badge">
+              <i class="fa-brands fa-youtube"></i> 1920x1080 Full HD (16:9 Standard)
+            </div>
+          </div>
+
+          <div class="control-row">
+            <label>Framerate</label>
+            <div class="pill-group" id="fpsPills">
+              <button class="pill" data-fps="30">30 FPS (Fast Render)</button>
+              <button class="pill active" data-fps="60">60 FPS (Ultra Smooth)</button>
+            </div>
+          </div>
+
+          <div class="control-row">
+            <label>Hardware Acceleration</label>
+            <div class="gpu-badge">
+              <i class="fa-solid fa-bolt"></i> NVIDIA NVENC (RTX 2050 GPU) &bull; Preset P4
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </aside>
+
+  </main>
+
+  <!-- MODAL: Video Rendering Progress & Download -->
+  <div class="modal-overlay" id="renderModal" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fa-solid fa-bolt-lightning"></i> Spark Video Render
+        </div>
+        <button class="btn-close-modal" id="btnCloseModal">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- In-Progress View -->
+        <div id="renderInProgressView">
+          <div class="render-spinner">
+            <i class="fa-solid fa-spinner fa-spin"></i>
+          </div>
+          <h3 class="render-status-title" id="renderStatusTitle">Starting FFmpeg render engine...</h3>
+          <p class="render-status-sub" id="renderStatusSub">Encoding 1080p MP4 with synchronized animations and audio.</p>
+          
+          <div class="render-progress-track">
+            <div class="render-progress-fill" id="renderProgressFill" style="width: 5%;"></div>
+          </div>
+          <div class="render-percentage-label" id="renderPercentLabel">5%</div>
+        </div>
+
+        <!-- Completed View -->
+        <div id="renderSuccessView" style="display: none;">
+          <div class="success-icon">
+            <i class="fa-solid fa-circle-check"></i>
+          </div>
+          <h3>Video Generated Successfully!</h3>
+          <p class="success-sub">Your Spark lyric MP4 is ready in Full HD 1080p.</p>
+
+          <!-- Rendered Video Player Preview -->
+          <div class="rendered-video-wrap">
+            <video id="renderedVideoPlayer" controls playsinline></video>
+          </div>
+
+          <div class="modal-action-buttons">
+            <a id="btnDownloadVideo" href="#" download="spark_lyric_video.mp4" class="btn btn-primary btn-large btn-glow">
+              <i class="fa-solid fa-download"></i> Download 1080p MP4
+            </a>
+            <button class="btn btn-secondary" id="btnDismissSuccess">Done</button>
+          </div>
+        </div>
+
+        <!-- Failed View -->
+        <div id="renderFailView" style="display: none;">
+          <div class="fail-icon">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+          </div>
+          <h3>Rendering Failed</h3>
+          <p class="fail-msg" id="renderFailMsg">An error occurred during encoding.</p>
+          <button class="btn btn-secondary" id="btnRetryRender">Close & Try Again</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Notification Toast -->
+  <div class="toast" id="toast">Notification message</div>
+
+  <script src="app.js?v=1.3"></script>
+</body>
+</html>

@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Automation — Spark Lyric Studio</title>
+  <meta name="description" content="Automated song lyric video generator, database management, and YouTube publishing dashboard.">
+  
+  <!-- Apple-inspired typography & user requested font families -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700&family=Cormorant+Garamond:wght@700&family=Inter:wght@600;700&family=Kalam:wght@700&family=Manrope:wght@600;700;800&family=Montserrat:wght@600;700;800&family=Oswald:wght@600;700&family=Outfit:wght@600;700&family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@700&family=Poppins:wght@600;700;800&family=Raleway:wght@700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  
+  <!-- Apple Light Cream Theme Stylesheet (Zero Icons, Zero Emojis) -->
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="admin-header">
+    <div class="header-container">
+      <div class="brand-section">
+        <span class="brand-title">Spark Studio</span>
+        <span class="brand-tag">Automation</span>
+      </div>
+
+      <nav class="header-nav">
+        <a href="/" class="nav-link">Studio Editor</a>
+        
+        <div class="yt-status-badge">
+          <span id="ytStatusDot" class="status-dot"></span>
+          <span id="ytStatusText">Checking YouTube...</span>
+          <a href="/auth/youtube" id="ytConnectBtn" class="btn-yt-connect" style="display: none;">Connect</a>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="admin-main">
+
+    <!-- Hero Card: Search & Automation Input -->
+    <section class="admin-card hero-card">
+      <div class="hero-header">
+        <h1 class="hero-title">Automate Song Lyric Video</h1>
+        <p class="hero-subtitle">
+          Enter a song name to automatically verify Saavn presence, check the MongoDB database, confirm synced lyrics, render 60 FPS NVENC video with a custom 1080p thumbnail, and upload to YouTube.
+        </p>
+      </div>
+
+      <form id="songInputForm">
+        <div class="song-input-form">
+          <div class="song-input-wrapper">
+            <input
+              type="text"
+              id="songInput"
+              class="song-text-input"
+              placeholder="Enter song name (e.g. Tum Hi Ho, Kesariya, Shape of You)..."
+              autocomplete="off"
+              spellcheck="false"
+              required
+            >
+          </div>
+          <button type="submit" id="btnSave" class="btn-primary">
+            Save &amp; Automate
+          </button>
+        </div>
+
+        <!-- Admin Customization Options Panel -->
+        <!-- Admin Customization Options Panel -->
+        <div class="admin-options-panel">
+          <div class="options-heading">
+            <span>Visual &amp; Typography Preferences</span>
+            <span class="options-heading-hint">Click background image to select &bull; Choose typography style</span>
+          </div>
+
+          <!-- 1. Visual Background Artwork Picker -->
+          <div class="bg-picker-section">
+            <div class="bg-picker-header-row">
+              <div>
+                <label class="option-label">Background Artwork</label>
+                <span class="option-sublabel">Select a backdrop image for 1080p video &amp; thumbnail</span>
+              </div>
+              <div class="bg-selected-pill">
+                <span class="pill-label">Selected:</span>
+                <span class="pill-name" id="selectedBgName">Auto (Random)</span>
+              </div>
+            </div>
+
+            <!-- Underlying select element kept for form compatibility -->
+            <select id="selectBg" class="native-hidden-select" style="display: none;">
+              <option value="auto" selected>Auto (Random Background)</option>
+            </select>
+
+            <div class="bg-thumbnails-row" id="bgThumbnailsRow">
+              <div class="bg-thumb-card active" data-bg="auto" tabindex="0" role="button" aria-pressed="true" title="Auto (Random Background)">
+                <div class="bg-thumb-auto">
+                  <span>Auto</span>
+                </div>
+                <div class="bg-thumb-name">Auto (Random)</div>
+              </div>
+              <!-- Dynamically populated from /api/backgrounds -->
+            </div>
+          </div>
+
+          <div class="options-grid">
+            <!-- 2. Font of Song Title (Thumbnail) -->
+            <div class="option-field">
+              <div class="font-field-header">
+                <label class="option-label" for="selectTitleFont">Song Title Font (Thumbnail)</label>
+                <span class="font-genre-tag" id="tagTitleFont">Default</span>
+              </div>
+
+              <div class="custom-font-select-wrapper" id="wrapTitleFont">
+                <button type="button" class="font-select-trigger" id="triggerTitleFont" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="font-selected-label" id="labelTitleFont" style="font-family: 'Edo', sans-serif;">Edo</span>
+                  <span class="font-select-arrow"></span>
+                </button>
+                <div class="font-dropdown-list" id="listTitleFont" role="listbox">
+                  <div class="font-option-item selected" data-value="Edo" role="option">
+                    <span class="font-option-sample" style="font-family: 'Edo', sans-serif;">Edo</span>
+                    <span class="font-option-meta">Brush (Default)</span>
+                  </div>
+                  <div class="font-option-item" data-value="auto" role="option">
+                    <span class="font-option-sample" style="font-family: inherit;">Auto (Random Font)</span>
+                    <span class="font-option-meta">Random</span>
+                  </div>
+                  <div class="font-option-item" data-value="Montserrat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Montserrat', sans-serif;">Montserrat</span>
+                    <span class="font-option-meta">Sans</span>
+                  </div>
+                  <div class="font-option-item" data-value="Playfair Display" role="option">
+                    <span class="font-option-sample" style="font-family: 'Playfair Display', serif;">Playfair Display</span>
+                    <span class="font-option-meta">Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cinzel" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cinzel', serif;">Cinzel</span>
+                    <span class="font-option-meta">Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Caveat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Caveat', cursive; font-size: 18px;">Caveat</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Kalam" role="option">
+                    <span class="font-option-sample" style="font-family: 'Kalam', cursive; font-size: 16px;">Kalam</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Oswald" role="option">
+                    <span class="font-option-sample" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.04em;">Oswald</span>
+                    <span class="font-option-meta">Condensed</span>
+                  </div>
+                  <div class="font-option-item" data-value="Space Grotesk" role="option">
+                    <span class="font-option-sample" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</span>
+                    <span class="font-option-meta">Neo-Grotesk</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cormorant Garamond" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cormorant Garamond', serif; font-size: 16px;">Cormorant Garamond</span>
+                    <span class="font-option-meta">Classic</span>
+                  </div>
+                  <div class="font-option-item" data-value="Poppins" role="option">
+                    <span class="font-option-sample" style="font-family: 'Poppins', sans-serif;">Poppins</span>
+                    <span class="font-option-meta">Geometric</span>
+                  </div>
+                  <div class="font-option-item" data-value="Manrope" role="option">
+                    <span class="font-option-sample" style="font-family: 'Manrope', sans-serif;">Manrope</span>
+                    <span class="font-option-meta">Modern</span>
+                  </div>
+                  <div class="font-option-item" data-value="Outfit" role="option">
+                    <span class="font-option-sample" style="font-family: 'Outfit', sans-serif;">Outfit</span>
+                    <span class="font-option-meta">Clean</span>
+                  </div>
+                  <div class="font-option-item" data-value="Inter" role="option">
+                    <span class="font-option-sample" style="font-family: 'Inter', sans-serif;">Inter</span>
+                    <span class="font-option-meta">Standard</span>
+                  </div>
+                  <div class="font-option-item" data-value="Raleway" role="option">
+                    <span class="font-option-sample" style="font-family: 'Raleway', sans-serif;">Raleway</span>
+                    <span class="font-option-meta">Elegant</span>
+                  </div>
+                  <div class="font-option-item" data-value="Plus Jakarta Sans" role="option">
+                    <span class="font-option-sample" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
+                    <span class="font-option-meta">Editorial</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Native select synced with custom dropdown -->
+              <select id="selectTitleFont" class="native-hidden-select" style="display: none;">
+                <option value="Edo" selected style="font-family: 'Edo', sans-serif;">Edo</option>
+                <option value="auto" style="font-family: inherit;">Auto (Random Font)</option>
+                <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
+                <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+                <option value="Cinzel" style="font-family: 'Cinzel', serif;">Cinzel</option>
+                <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat</option>
+                <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam</option>
+                <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald</option>
+                <option value="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
+                <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
+                <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</option>
+                <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope</option>
+                <option value="Outfit" style="font-family: 'Outfit', sans-serif;">Outfit</option>
+                <option value="Inter" style="font-family: 'Inter', sans-serif;">Inter</option>
+                <option value="Raleway" style="font-family: 'Raleway', sans-serif;">Raleway</option>
+                <option value="Plus Jakarta Sans" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
+              </select>
+
+              <div class="font-preview-line" id="previewTitleFont" style="font-family: 'Edo', sans-serif;">
+                Preview: Spark Lyric Studio — Song Title (Edo)
+              </div>
+            </div>
+
+            <!-- 3. Font of Singer (Thumbnail) -->
+            <div class="option-field">
+              <div class="font-field-header">
+                <label class="option-label" for="selectSingerFont">Singer Font (Thumbnail)</label>
+                <span class="font-genre-tag" id="tagSingerFont">Default</span>
+              </div>
+
+              <div class="custom-font-select-wrapper" id="wrapSingerFont">
+                <button type="button" class="font-select-trigger" id="triggerSingerFont" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="font-selected-label" id="labelSingerFont" style="font-family: 'Edo', sans-serif;">Edo</span>
+                  <span class="font-select-arrow"></span>
+                </button>
+                <div class="font-dropdown-list" id="listSingerFont" role="listbox">
+                  <div class="font-option-item selected" data-value="Edo" role="option">
+                    <span class="font-option-sample" style="font-family: 'Edo', sans-serif;">Edo</span>
+                    <span class="font-option-meta">Brush (Default)</span>
+                  </div>
+                  <div class="font-option-item" data-value="auto" role="option">
+                    <span class="font-option-sample" style="font-family: inherit;">Auto (Random Different Font)</span>
+                    <span class="font-option-meta">Random</span>
+                  </div>
+                  <div class="font-option-item" data-value="Playfair Display" role="option">
+                    <span class="font-option-sample" style="font-family: 'Playfair Display', serif;">Playfair Display</span>
+                    <span class="font-option-meta">Luxury Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cinzel" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cinzel', serif;">Cinzel</span>
+                    <span class="font-option-meta">Roman Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Outfit" role="option">
+                    <span class="font-option-sample" style="font-family: 'Outfit', sans-serif;">Outfit</span>
+                    <span class="font-option-meta">Modern Sans</span>
+                  </div>
+                  <div class="font-option-item" data-value="Plus Jakarta Sans" role="option">
+                    <span class="font-option-sample" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
+                    <span class="font-option-meta">Editorial</span>
+                  </div>
+                  <div class="font-option-item" data-value="Inter" role="option">
+                    <span class="font-option-sample" style="font-family: 'Inter', sans-serif;">Inter</span>
+                    <span class="font-option-meta">Standard</span>
+                  </div>
+                  <div class="font-option-item" data-value="Raleway" role="option">
+                    <span class="font-option-sample" style="font-family: 'Raleway', sans-serif;">Raleway</span>
+                    <span class="font-option-meta">Elegant</span>
+                  </div>
+                  <div class="font-option-item" data-value="Montserrat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Montserrat', sans-serif;">Montserrat</span>
+                    <span class="font-option-meta">Sans</span>
+                  </div>
+                  <div class="font-option-item" data-value="Caveat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Caveat', cursive; font-size: 18px;">Caveat</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Kalam" role="option">
+                    <span class="font-option-sample" style="font-family: 'Kalam', cursive; font-size: 16px;">Kalam</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cormorant Garamond" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cormorant Garamond', serif; font-size: 16px;">Cormorant Garamond</span>
+                    <span class="font-option-meta">Classic</span>
+                  </div>
+                  <div class="font-option-item" data-value="Poppins" role="option">
+                    <span class="font-option-sample" style="font-family: 'Poppins', sans-serif;">Poppins</span>
+                    <span class="font-option-meta">Geometric</span>
+                  </div>
+                  <div class="font-option-item" data-value="Manrope" role="option">
+                    <span class="font-option-sample" style="font-family: 'Manrope', sans-serif;">Manrope</span>
+                    <span class="font-option-meta">Modern</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Native select synced with custom dropdown -->
+              <select id="selectSingerFont" class="native-hidden-select" style="display: none;">
+                <option value="Edo" selected style="font-family: 'Edo', sans-serif;">Edo</option>
+                <option value="auto" style="font-family: inherit;">Auto (Random Different Font)</option>
+                <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+                <option value="Cinzel" style="font-family: 'Cinzel', serif;">Cinzel</option>
+                <option value="Outfit" style="font-family: 'Outfit', sans-serif;">Outfit</option>
+                <option value="Plus Jakarta Sans" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
+                <option value="Inter" style="font-family: 'Inter', sans-serif;">Inter</option>
+                <option value="Raleway" style="font-family: 'Raleway', sans-serif;">Raleway</option>
+                <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
+                <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat</option>
+                <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam</option>
+                <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
+                <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</option>
+                <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope</option>
+              </select>
+
+              <div class="font-preview-line" id="previewSingerFont" style="font-family: 'Edo', sans-serif;">
+                Preview: Artist & Singer Name — 1080p (Edo)
+              </div>
+            </div>
+
+            <!-- 4. Font of Song (Video Lyrics) -->
+            <div class="option-field">
+              <div class="font-field-header">
+                <label class="option-label" for="selectSongFont">Song Lyrics Font (Video)</label>
+                <span class="font-genre-tag" id="tagSongFont">Default</span>
+              </div>
+
+              <div class="custom-font-select-wrapper" id="wrapSongFont">
+                <button type="button" class="font-select-trigger" id="triggerSongFont" aria-haspopup="listbox" aria-expanded="false">
+                  <span class="font-selected-label" id="labelSongFont" style="font-family: 'Edo', sans-serif;">Edo</span>
+                  <span class="font-select-arrow"></span>
+                </button>
+                <div class="font-dropdown-list" id="listSongFont" role="listbox">
+                  <div class="font-option-item selected" data-value="Edo" role="option">
+                    <span class="font-option-sample" style="font-family: 'Edo', sans-serif;">Edo</span>
+                    <span class="font-option-meta">Brush (Default)</span>
+                  </div>
+                  <div class="font-option-item" data-value="auto" role="option">
+                    <span class="font-option-sample" style="font-family: inherit;">Auto (Random Font)</span>
+                    <span class="font-option-meta">Random</span>
+                  </div>
+                  <div class="font-option-item" data-value="Montserrat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Montserrat', sans-serif;">Montserrat</span>
+                    <span class="font-option-meta">Sans</span>
+                  </div>
+                  <div class="font-option-item" data-value="Poppins" role="option">
+                    <span class="font-option-sample" style="font-family: 'Poppins', sans-serif;">Poppins</span>
+                    <span class="font-option-meta">Geometric</span>
+                  </div>
+                  <div class="font-option-item" data-value="Manrope" role="option">
+                    <span class="font-option-sample" style="font-family: 'Manrope', sans-serif;">Manrope</span>
+                    <span class="font-option-meta">Modern</span>
+                  </div>
+                  <div class="font-option-item" data-value="Oswald" role="option">
+                    <span class="font-option-sample" style="font-family: 'Oswald', sans-serif; letter-spacing: 0.04em;">Oswald</span>
+                    <span class="font-option-meta">Condensed</span>
+                  </div>
+                  <div class="font-option-item" data-value="Space Grotesk" role="option">
+                    <span class="font-option-sample" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</span>
+                    <span class="font-option-meta">Neo-Grotesk</span>
+                  </div>
+                  <div class="font-option-item" data-value="Kalam" role="option">
+                    <span class="font-option-sample" style="font-family: 'Kalam', cursive; font-size: 16px;">Kalam</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Caveat" role="option">
+                    <span class="font-option-sample" style="font-family: 'Caveat', cursive; font-size: 18px;">Caveat</span>
+                    <span class="font-option-meta">Script</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cormorant Garamond" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cormorant Garamond', serif; font-size: 16px;">Cormorant Garamond</span>
+                    <span class="font-option-meta">Classic</span>
+                  </div>
+                  <div class="font-option-item" data-value="Playfair Display" role="option">
+                    <span class="font-option-sample" style="font-family: 'Playfair Display', serif;">Playfair Display</span>
+                    <span class="font-option-meta">Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Cinzel" role="option">
+                    <span class="font-option-sample" style="font-family: 'Cinzel', serif;">Cinzel</span>
+                    <span class="font-option-meta">Serif</span>
+                  </div>
+                  <div class="font-option-item" data-value="Outfit" role="option">
+                    <span class="font-option-sample" style="font-family: 'Outfit', sans-serif;">Outfit</span>
+                    <span class="font-option-meta">Clean</span>
+                  </div>
+                  <div class="font-option-item" data-value="Inter" role="option">
+                    <span class="font-option-sample" style="font-family: 'Inter', sans-serif;">Inter</span>
+                    <span class="font-option-meta">Standard</span>
+                  </div>
+                  <div class="font-option-item" data-value="Raleway" role="option">
+                    <span class="font-option-sample" style="font-family: 'Raleway', sans-serif;">Raleway</span>
+                    <span class="font-option-meta">Elegant</span>
+                  </div>
+                  <div class="font-option-item" data-value="Plus Jakarta Sans" role="option">
+                    <span class="font-option-sample" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
+                    <span class="font-option-meta">Editorial</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Native select synced with custom dropdown -->
+              <select id="selectSongFont" class="native-hidden-select" style="display: none;">
+                <option value="Edo" selected style="font-family: 'Edo', sans-serif;">Edo</option>
+                <option value="auto" style="font-family: inherit;">Auto (Random Font)</option>
+                <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
+                <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</option>
+                <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope</option>
+                <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald</option>
+                <option value="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
+                <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam</option>
+                <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat</option>
+                <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
+                <option value="Playfair Display" style="font-family: 'Playfair Display', serif;">Playfair Display</option>
+                <option value="Cinzel" style="font-family: 'Cinzel', serif;">Cinzel</option>
+                <option value="Outfit" style="font-family: 'Outfit', sans-serif;">Outfit</option>
+                <option value="Inter" style="font-family: 'Inter', sans-serif;">Inter</option>
+                <option value="Raleway" style="font-family: 'Raleway', sans-serif;">Raleway</option>
+                <option value="Plus Jakarta Sans" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</option>
+              </select>
+
+              <div class="font-preview-line" id="previewSongFont" style="font-family: 'Edo', sans-serif;">
+                Preview: Synchronized animated lyrics on screen (Edo)
+              </div>
+            </div>
+
+            <!-- 5. Default Size of Song Lyrics (150px) -->
+            <div class="option-field font-size-field">
+              <label for="inputFontSize" class="option-label">Song Lyrics Size (px)</label>
+              <input
+                type="number"
+                id="inputFontSize"
+                class="option-input"
+                min="40"
+                max="240"
+                step="5"
+                value="150"
+                placeholder="150"
+              >
+              <div class="font-size-hint">Default 150px for 1080p canvas</div>
+            </div>
+          </div>
+
+          <!-- 6. Live Thumbnail Verification & Fine-Tuning Section -->
+          <div class="thumb-composer-section">
+            <div class="thumb-composer-header">
+              <div>
+                <label class="option-label">Live Thumbnail Preview &amp; Tuning</label>
+                <span class="option-sublabel">Verify layout &bull; Real-time interactive adjustment of gap &amp; font sizes</span>
+              </div>
+              <div class="thumb-composer-actions">
+                <button type="button" id="btnResetThumbTuning" class="btn-ghost-sm" title="Reset to auto-calculated layout">Reset to Default</button>
+              </div>
+            </div>
+
+            <div class="thumb-composer-layout">
+              <!-- Left: 16:9 Canvas Preview -->
+              <div class="thumb-preview-stage">
+                <div class="thumb-canvas-wrapper">
+                  <canvas id="thumbPreviewCanvas" width="1920" height="1080"></canvas>
+                  <div class="thumb-canvas-badge">1080p Live Preview</div>
+                </div>
+                <div class="thumb-preview-caption">
+                  <span id="thumbPreviewResHint">1920 &times; 1080 &bull; Centered &bull; White with Subtle Drop Shadow</span>
+                </div>
+              </div>
+
+              <!-- Right: Fine-tuning Sliders & Number Controls -->
+              <div class="thumb-tuning-controls">
+                <!-- Title Font Size Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderTitleFontSize" class="tuning-label">Title Font Size</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numTitleFontSize" class="tuning-number-input" min="80" max="360" value="280">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderTitleFontSize" class="tuning-range" min="80" max="360" step="2" value="280">
+                  <div class="tuning-hint-row">
+                    <span>Target: 280px default (1&ndash;2 lines max)</span>
+                    <button type="button" id="btnAutoTitleSize" class="tuning-micro-btn">Auto-Fit</button>
+                  </div>
+                </div>
+
+                <!-- Singer Font Size Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderSingerFontSize" class="tuning-label">Singer Font Size</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numSingerFontSize" class="tuning-number-input" min="40" max="220" value="132">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderSingerFontSize" class="tuning-range" min="40" max="220" step="2" value="132">
+                  <div class="tuning-hint-row">
+                    <span>Target: 132px default (~1 line)</span>
+                    <button type="button" id="btnAutoSingerSize" class="tuning-micro-btn">Auto-Fit</button>
+                  </div>
+                </div>
+
+                <!-- Gap Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderThumbGap" class="tuning-label">Gap (Title &harr; Singer)</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numThumbGap" class="tuning-number-input" min="10" max="150" value="42">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderThumbGap" class="tuning-range" min="10" max="150" step="2" value="42">
+                  <div class="tuning-hint-row">
+                    <span>Target: default 42px (~3&ndash;5% height)</span>
+                    <button type="button" id="btnResetGap" class="tuning-micro-btn">42px</button>
+                  </div>
+                </div>
+
+                <!-- Glow & Shadow Depth Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderThumbGlowDepth" class="tuning-label">Glow / Shadow Depth</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numThumbGlowDepth" class="tuning-number-input" min="0" max="20" value="2">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderThumbGlowDepth" class="tuning-range" min="0" max="20" step="1" value="2">
+                  <div class="tuning-hint-row">
+                    <span>Default: 2px subtle glow &amp; shadow (0px outline)</span>
+                    <button type="button" id="btnResetGlowDepth" class="tuning-micro-btn">2px</button>
+                  </div>
+                </div>
+
+                <!-- Sample Text inputs for instant live preview -->
+                <div class="tuning-sample-fields">
+                  <div class="tuning-subfield">
+                    <label class="tuning-sublabel" for="previewTitleInput">Preview Title Text</label>
+                    <input type="text" id="previewTitleInput" class="tuning-text-input" placeholder="Type title or search above" value="Tum Hi Ho">
+                  </div>
+                  <div class="tuning-subfield">
+                    <label class="tuning-sublabel" for="previewSingerInput">Preview Singer Text</label>
+                    <input type="text" id="previewSingerInput" class="tuning-text-input" placeholder="Singer Name" value="Arijit Singh">
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </form>
+
+      <!-- Dynamic Response Banner -->
+      <div id="responseBanner" class="response-banner" role="status"></div>
+    </section>
+
+    <!-- Active Automation Tracker Card -->
+    <section id="trackerCard" class="admin-card tracker-card">
+      <div class="card-heading-row">
+        <h2 class="card-title">Live Pipeline Execution</h2>
+        <span id="trackerJobId" class="job-pill">Job</span>
+      </div>
+
+      <!-- Pipeline Steps Indicator -->
+      <div class="pipeline-steps-grid">
+        <div id="step1" class="pipeline-step-item">
+          <div class="step-label">Step 1</div>
+          <div class="step-name">Saavn Search</div>
+        </div>
+
+        <div id="step2" class="pipeline-step-item">
+          <div class="step-label">Step 2</div>
+          <div class="step-name">Database Check</div>
+        </div>
+
+        <div id="step3" class="pipeline-step-item">
+          <div class="step-label">Step 3</div>
+          <div class="step-name">Synced Lyrics</div>
+        </div>
+
+        <div id="step4" class="pipeline-step-item">
+          <div class="step-label">Step 4</div>
+          <div class="step-name">Thumbnail Render</div>
+        </div>
+
+        <div id="step5" class="pipeline-step-item">
+          <div class="step-label">Step 5</div>
+          <div class="step-name">60 FPS NVENC Video</div>
+        </div>
+
+        <div id="step6" class="pipeline-step-item">
+          <div class="step-label">Step 6</div>
+          <div class="step-name">YouTube Upload</div>
+        </div>
+      </div>
+
+      <!-- Queue Waiting Notice (shown when job is waiting in line) -->
+      <div id="queueWaitingBanner" class="queue-waiting-banner" style="display: none;">
+        <div class="queue-waiting-header">
+          <span class="queue-pos-tag" id="queuePosTag">Queued: Position #1</span>
+          <span class="queue-active-hint" id="queueActiveHint">Currently processing active video</span>
+        </div>
+        <div class="queue-waiting-msg" id="queueWaitingMsg">
+          This song is waiting in queue. Video generation runs strictly one-by-one to ensure maximum encoding quality and stability. Processing will begin automatically when the current video finishes.
+        </div>
+      </div>
+
+      <!-- Real-time Progress Bar -->
+      <div class="progress-section">
+        <div class="progress-labels-row">
+          <span>Overall Status</span>
+          <span id="progressPercent">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="progressFill" class="progress-fill"></div>
+        </div>
+        <div id="progressStatusMsg" class="progress-status-msg">Initializing automation pipeline...</div>
+      </div>
+
+      <!-- Completed / Live Result Box -->
+      <div id="activeResultBox" class="active-result-box">
+        <div class="result-thumb-wrapper">
+          <img id="resultThumb" src="" alt="Generated 1080p Thumbnail" class="thumb-preview-img">
+          <span id="resultThumbBadge" class="thumb-status-badge">Thumbnail Ready</span>
+        </div>
+        <div class="result-info">
+          <div id="resultTitle" class="result-title">Song Title</div>
+          <div id="resultMeta" class="result-meta">Artist | 60 FPS NVENC</div>
+          <div id="resultCleanStatus" class="result-clean-notice" style="display: none;">
+            Output video &amp; thumbnail cleaned up after successful YouTube upload.
+          </div>
+          <div class="result-links">
+            <a id="resultVideoDownload" href="#" download class="btn-secondary" style="display: none;">Download Video</a>
+            <a id="resultYtLink" href="#" target="_blank" class="btn-secondary" style="display: none;">Watch on YouTube</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Active Automation Queue Card -->
+    <section class="admin-card queue-card" id="queueCard" style="display: none;">
+      <div class="queue-card-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 class="card-title">Automation Processing Queue</h2>
+            <span id="queueLengthBadge" class="queue-length-badge">0 in line</span>
+          </div>
+          <p class="section-desc">Serial processing queue: videos are rendered and uploaded one-by-one.</p>
+        </div>
+        <span class="queue-rule-pill">One-by-One FIFO</span>
+      </div>
+
+      <div class="queue-card-body">
+        <div class="queue-active-box" id="queueActiveBox" style="display: none;">
+          <div class="queue-box-label">Now Processing</div>
+          <div class="queue-active-content">
+            <div class="queue-active-meta">
+              <span class="queue-active-title" id="queueActiveTitle">Song Title</span>
+              <span class="queue-active-artist" id="queueActiveArtist">Artist Name</span>
+            </div>
+            <span class="queue-status-indicator" id="queueActiveStatus">Encoding Video...</span>
+          </div>
+        </div>
+
+        <div class="queue-waiting-section" id="queueWaitingSection" style="display: none;">
+          <div class="queue-box-label">Waiting in Queue</div>
+          <div class="queue-items-list" id="queueItemsList"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Failed Songs & Errors Card -->
+    <section class="admin-card failed-songs-card" id="failedSongsCard">
+      <div class="failed-songs-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <h2 class="card-title">Failed Songs &amp; Errors</h2>
+            <span id="failedCountBadge" class="failed-count-badge">0 Failed</span>
+          </div>
+          <p class="section-desc">Songs that encountered an error during search, lyrics verification, rendering, or upload.</p>
+        </div>
+
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <button id="btnRefreshFailed" class="btn-secondary" type="button">
+            Refresh
+          </button>
+          <button id="btnClearAllFailed" class="btn-ghost-sm" type="button" style="display: none;">
+            Clear All
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="songs-table failed-table">
+          <thead>
+            <tr>
+              <th style="width: 250px;">Song &amp; Singer</th>
+              <th>Failure Reason</th>
+              <th style="width: 150px;">Failed Step</th>
+              <th style="width: 170px;">Date &amp; Time</th>
+              <th style="width: 140px; text-align: right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="failedTableBody">
+            <tr>
+              <td colspan="5" class="table-empty-row">
+                No failed songs recorded. All automation jobs completed successfully.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Processed Songs Database Library Card -->
+    <section class="admin-card library-card">
+      <div class="library-header">
+        <div>
+          <h2 class="card-title">Processed Songs Database</h2>
+          <span id="libraryStats" class="library-stats-pill">Total: 0</span>
+        </div>
+
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <input
+            type="search"
+            id="tableSearchInput"
+            class="table-search-input"
+            placeholder="Search saved songs..."
+          >
+          <button id="btnRefreshLibrary" class="btn-secondary" type="button">
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="songs-table">
+          <thead>
+            <tr>
+              <th style="width: 120px;">Thumbnail</th>
+              <th>Song &amp; Singer</th>
+              <th>Styling Specs</th>
+              <th>YouTube Status</th>
+              <th>Video Output</th>
+              <th style="width: 90px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="songsTableBody">
+            <tr>
+              <td colspan="6" class="table-empty-row">
+                Loading saved songs from database...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="admin.js"></script>
+</body>
+</html>

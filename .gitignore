@@ -1,0 +1,59 @@
+# Dependencies
+node_modules/
+package-lock.json.bak
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Sensitive Google & YouTube OAuth credentials
+credentials/*.json
+!credentials/*.example.json
+!credentials/.gitkeep
+
+# Large FFmpeg binary distributions (~500MB+)
+ffmpeg/
+bin/
+
+# Video render outputs & temporary pipeline working directory
+output/*
+!output/.gitkeep
+temp/*
+!temp/.gitkeep
+
+# Rendered video, audio, and subtitle artifacts
+*.mp4
+*.m4a
+*.mp3
+*.wav
+*.aac
+*.ass
+*.lrc
+
+# Font archives & extracted directories
+*.zip
+edo_font/
+edo_fs/
+
+# Scratch images & thumbnails outside source assets and web UI
+*.jpg
+*.jpeg
+*.png
+!assets/**
+!public/**
+
+# Logs & debugging
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# System & IDE files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo
