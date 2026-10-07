@@ -118,11 +118,30 @@ export function getRandomBackground() {
   return getRandomElement(files);
 }
 
+// Detect linguistic script of text (e.g. Latin, Devanagari/Hindi, Gurmukhi/Punjabi, etc.)
+export function detectScript(text) {
+  if (!text) return "latin";
+  const s = String(text);
+  if (/[\u0900-\u097F]/.test(s)) return "devanagari"; // Hindi, Marathi, Sanskrit, Nepali
+  if (/[\u0A00-\u0A7F]/.test(s)) return "gurmukhi";   // Punjabi
+  if (/[\u0980-\u09FF]/.test(s)) return "bengali";    // Bengali, Assamese
+  if (/[\u0B80-\u0BFF]/.test(s)) return "tamil";      // Tamil
+  if (/[\u0C00-\u0C7F]/.test(text)) return "telugu";     // Telugu
+  if (/[\u0A80-\u0AFF]/.test(s)) return "gujarati";   // Gujarati
+  if (/[\u0600-\u06FF]/.test(s)) return "arabic";     // Urdu, Arabic
+  if (/[\u4E00-\u9FFF\u3040-\u30FF\uAC00-\uD7AF]/.test(s)) return "cjk";
+  return "latin";
+}
+
 // Estimate character width for Edo brush font and proportional typography
 export function estimateTextWidth(text, fontSize = 1) {
   let units = 0;
-  for (const ch of text) {
-    if (/[WMwm%#@]/.test(ch)) {
+  for (const ch of String(text || "")) {
+    const code = ch.charCodeAt(0);
+    if (code > 0x024f) {
+      // Indic scripts, CJK, etc. have broader glyph bounding boxes
+      units += 0.88;
+    } else if (/[WMwm%#@]/.test(ch)) {
       units += 0.92;
     } else if (/[ijlI1!|.,:;'`\s]/.test(ch)) {
       units += 0.32;
@@ -143,6 +162,65 @@ export function normalizeAssFont(fontName) {
   const lower = fontName.trim().toLowerCase();
   if (lower === "edo" || lower === "edo sz") return "Edo SZ";
   return fontName.trim();
+}
+
+/**
+ * Smart font resolver with script-aware fallback:
+ * If text contains Devanagari or other non-Latin scripts, and the requested font
+ * does not support that script (like Edo or Western-only fonts), automatically
+ * selects an artistic font with full glyph support (e.g. Kalam, Poppins, or Noto Sans).
+ */
+export function resolveFontForText(fontName, text) {
+  const script = detectScript(text);
+  const normalized = normalizeAssFont(fontName);
+
+  if (script === "latin") {
+    return normalized;
+  }
+
+  // Devanagari (Hindi, Marathi, Nepali)
+  if (script === "devanagari") {
+    // Fonts known to support Devanagari directly
+    if (/kalam/i.test(normalized)) return "Kalam";
+    if (/poppins/i.test(normalized)) return "Poppins";
+    if (/noto\s*sans\s*devanagari/i.test(normalized)) return "Noto Sans Devanagari";
+    if (/lohit/i.test(normalized)) return "Lohit Devanagari";
+    
+    // For Edo (brush style) and other Latin-only fonts, Kalam is the ideal creative brush match
+    return "Kalam";
+  }
+
+  // Gurmukhi (Punjabi)
+  if (script === "gurmukhi") {
+    return "Noto Sans Gurmukhi";
+  }
+
+  // Bengali / Assamese
+  if (script === "bengali") {
+    return "Noto Sans Bengali";
+  }
+
+  // Tamil
+  if (script === "tamil") {
+    return "Noto Sans Tamil";
+  }
+
+  // Telugu
+  if (script === "telugu") {
+    return "Noto Sans Telugu";
+  }
+
+  // Gujarati
+  if (script === "gujarati") {
+    return "Noto Sans Gujarati";
+  }
+
+  // Arabic / Urdu
+  if (script === "arabic") {
+    return "Noto Naskh Arabic";
+  }
+
+  return normalized;
 }
 
 /**
@@ -304,9 +382,8 @@ export async function generateThumbnail({
     ? Math.max(0, Math.min(25, Number(glowDepth)))
     : 2;
 
-  const finalTitleFont = normalizeAssFont(titleFont);
-  let finalSingerFont = singerFont && singerFont !== "auto" ? singerFont : "Edo";
-  finalSingerFont = normalizeAssFont(finalSingerFont);
+  const finalTitleFont = resolveFontForText(titleFont, songTitle);
+  const finalSingerFont = resolveFontForText(singerFont, singerClean);
 
   const titleEscaped = titleInfo.wrappedText
     .replace(/\\/g, "\\\\")

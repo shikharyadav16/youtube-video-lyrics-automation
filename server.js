@@ -35,6 +35,8 @@ import {
   getRandomBackground,
   generateThumbnail,
   formatYouTubeDescription,
+  detectScript,
+  resolveFontForText,
 } from "./automation.js";
 import {
   getYouTubeAuthUrl,
@@ -42,6 +44,14 @@ import {
   isYouTubeAuthenticated,
   uploadVideoToYouTube,
 } from "./youtube.js";
+import {
+  hasNonLatinScript,
+  transliterateLyricsToRomanized,
+  transliterateTextToRomanized,
+  findLyricsWithGroq,
+  isGroqConfigured,
+  DEFAULT_GROQ_MODEL,
+} from "./groq.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -376,6 +386,13 @@ function buildQualityUrls(url96) {
   ];
 }
 
+function formatDurationSec(sec) {
+  const s = Math.round(Number(sec) || 0);
+  const m = Math.floor(s / 60);
+  const rem = s % 60;
+  return `${m}:${rem.toString().padStart(2, "0")}`;
+}
+
 function shapeSong(s) {
   const mi = s.more_info || {};
   return {
@@ -579,7 +596,7 @@ app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 // Static directories
 app.use("/assets/background", express.static(DIRS.backgrounds));
 app.use("/output", express.static(DIRS.output));
-app.use(express.static(DIRS.public));
+app.use(express.static(DIRS.public, { etag: false, maxAge: 0 }));
 
 /* ------------------------------------------------------------------ */
 /*  API 1: Song Search                                                */
@@ -742,7 +759,7 @@ app.get("/api/stream", async (req, res) => {
 /* ------------------------------------------------------------------ */
 /*  API 4: Synced Lyrics                                              */
 /* ------------------------------------------------------------------ */
-async function getSyncedLyricsData(id) {
+async function getSyncedLyricsData(id, options = { romanize: true }) {
   try {
     const meta = await fetchSongMeta(id);
     if (!meta) return null;
@@ -750,8 +767,45 @@ async function getSyncedLyricsData(id) {
     const saavn = await fetchSaavnLyrics(id);
     const lrclib = await fetchLrclib(meta);
 
-    const lrc = lrclib?.synced || null;
-    const lines = lrc ? parseLrc(lrc) : [];
+    let lrc = lrclib?.synced || null;
+    let lines = lrc ? parseLrc(lrc) : [];
+    let plainLyrics = lrclib?.plain || saavn?.lyrics || null;
+
+    // Transliterate lyrics if non-Latin (Devanagari, Gurmukhi, etc.) to Romanized English letters using Groq
+    if (options.romanize && isGroqConfigured() && lines.length > 0) {
+      const needsTransliteration = lines.some((l) => hasNonLatinScript(l.text));
+      if (needsTransliteration) {
+        try {
+          const singerStr = Array.isArray(meta.artists)
+            ? meta.artists.map((a) => (typeof a === "object" ? a.name : a)).join(", ")
+            : String(meta.artists || "");
+          lines = await transliterateLyricsToRomanized(lines, {
+            title: meta.title,
+            singer: singerStr,
+          });
+        } catch (transErr) {
+          console.warn("[lyrics] Groq transliteration warning:", transErr.message);
+        }
+      }
+    }
+
+    // Fallback: If no synced lyrics and no plain lyrics, attempt finding with Groq
+    if (!lines.length && !plainLyrics && isGroqConfigured()) {
+      try {
+        const singerStr = Array.isArray(meta.artists)
+          ? meta.artists.map((a) => (typeof a === "object" ? a.name : a)).join(", ")
+          : String(meta.artists || "");
+        const groqLyrics = await findLyricsWithGroq({
+          title: meta.title,
+          singer: singerStr,
+        });
+        if (groqLyrics?.lyrics) {
+          plainLyrics = groqLyrics.lyrics;
+        }
+      } catch (findErr) {
+        console.warn("[lyrics] Groq find lyrics warning:", findErr.message);
+      }
+    }
 
     return {
       id,
@@ -760,8 +814,8 @@ async function getSyncedLyricsData(id) {
       album: meta.album,
       duration: meta.duration,
       synced: !!(lines && lines.length),
-      source: lrc ? "lrclib" : saavn.lyrics ? "jiosaavn" : null,
-      lyrics: lrclib?.plain || saavn.lyrics || null,
+      source: lrc ? "lrclib" : saavn.lyrics ? "jiosaavn" : (plainLyrics ? "groq" : null),
+      lyrics: plainLyrics,
       lrc,
       lines,
     };
@@ -882,10 +936,14 @@ function generateAssSubtitles({
   linesMode = "single", // "single" or "duo"
   lyricDelay = 0.0,
 }) {
-  const assFont =
-    !fontFamily || fontFamily.toLowerCase() === "edo" || fontFamily.toLowerCase() === "edo sz"
-      ? "Edo SZ"
-      : fontFamily;
+  let sampleLyrics = "";
+  if (Array.isArray(lines) && lines.length) {
+    for (let i = 0; i < Math.min(25, lines.length); i++) {
+      sampleLyrics += " " + (lines[i].text || "");
+    }
+  }
+  const resolvedFont = resolveFontForText(fontFamily, sampleLyrics);
+  const assFont = resolvedFont;
   const assPrimary = hexToAssColor(primaryColor, 0);
   const assOutline = hexToAssColor(outlineColor, 0);
   const assShadow = hexToAssColor(shadowColor, 0.4);
@@ -1538,6 +1596,16 @@ function getQueueSnapshot() {
       singer: j.singer,
       status: j.status,
       queuePosition: idx + 1,
+      bgFilename: j.bgFilename,
+      chosenTitleFont: j.chosenTitleFont || "Edo",
+      chosenSingerFont: j.chosenSingerFont || "Edo",
+      fontFamily: j.fontFamily || "Edo",
+      titleFontSize: j.titleFontSize || 280,
+      singerFontSize: j.singerFontSize || 132,
+      thumbnailGap: j.thumbnailGap !== undefined ? j.thumbnailGap : 42,
+      thumbnailGlowDepth: j.thumbnailGlowDepth !== undefined ? j.thumbnailGlowDepth : 2,
+      lyricsGlowDepth: j.lyricsGlowDepth !== undefined ? j.lyricsGlowDepth : 2,
+      lyricFontSize: j.lyricFontSize || 150,
       createdAt: j.createdAt,
     })),
     queueLength: automationQueue.waitingQueue.length,
@@ -1590,7 +1658,7 @@ async function runAutomationPipelineForJob(job) {
       bgDarkness: 0,
       bgBlur: 0,
       outlineWidth: 0,
-      shadowDepth: 2,
+      shadowDepth: job.lyricsGlowDepth !== undefined && !isNaN(Number(job.lyricsGlowDepth)) ? Number(job.lyricsGlowDepth) : 2,
       fontFamily: job.fontFamily,
       animation: job.animation,
       bgMotion: "zoom",
@@ -1658,9 +1726,11 @@ async function runAutomationPipelineForJob(job) {
             console.warn("[queue] File cleanup warning:", cleanErr.message);
           }
         } else {
-          console.warn(`[queue] YouTube upload skipped/unsuccessful:`, ytResult?.reason || "Unknown reason");
+          job.youtubeError = ytResult?.reason || "Upload unsuccessful";
+          console.warn(`[queue] YouTube upload skipped/unsuccessful:`, job.youtubeError);
         }
       } catch (ytErr) {
+        job.youtubeError = ytErr.message;
         console.error(`[queue] YouTube upload error for "${job.songTitle}":`, ytErr.message);
       }
 
@@ -1686,8 +1756,11 @@ async function runAutomationPipelineForJob(job) {
           youtubeVideoId: ytResult?.videoId || null,
           youtubeUrl: ytResult?.youtubeUrl || null,
           youtubeUploaded: Boolean(ytResult?.uploaded),
+          youtubeError: ytResult?.uploaded ? null : (job.youtubeError || null),
           localCleaned: Boolean(ytResult?.uploaded),
           lyricsCount: job.lyricsLines.length,
+          lyricsFontSize: job.lyricFontSize || 150,
+          lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 2,
           createdAt: new Date(),
         };
 
@@ -1770,31 +1843,20 @@ async function startQueueWorker() {
 }
 
 /* ------------------------------------------------------------------ */
-/*  ADMIN AUTOMATION ENDPOINTS                                        */
+/*  ADMIN SEARCH & AUTOMATION ENDPOINTS                               */
 /* ------------------------------------------------------------------ */
-app.post("/api/admin/process-song", async (req, res) => {
-  const {
-    query,
-    background,
-    titleFont,
-    singerFont,
-    songFont,
-    fontSize,
-    titleFontSize,
-    singerFontSize,
-    thumbnailGap,
-    thumbnailGlowDepth,
-  } = req.body;
 
-  if (!query || !query.trim()) {
-    return res.status(400).json({ error: "Please enter a song name" });
+// Top 10 Song Search with Image, Title, Singer, & Synced Lyrics Status
+app.get("/api/admin/search-songs", async (req, res) => {
+  const query = (req.query.q || req.query.query || "").trim();
+  if (!query) {
+    return res.status(400).json({ error: "Please enter a song name to search" });
   }
 
   try {
-    // Step 1: Search Saavn API
     const searchUrl = SAAVN_SEARCH.replace("%page", "1")
-      .replace("%q", encodeURIComponent(query.trim()))
-      .replace("%n", "5")
+      .replace("%q", encodeURIComponent(query))
+      .replace("%n", "10")
       .replace("%call", "search.getResults");
 
     const searchRes = await rawGet(searchUrl);
@@ -1806,14 +1868,189 @@ app.post("/api/admin/process-song", async (req, res) => {
 
     if (!items.length) {
       return res.json({
-        status: "not_found",
-        message: "Song is not found",
+        query,
+        count: 0,
+        songs: [],
+        message: "No songs found for this search",
       });
     }
 
-    // Step 2: Check MongoDB database
-    const topSong = items[0];
-    const songId = String(topSong.id);
+    // Check DB for existing songs
+    const songIds = items.map((s) => String(s.id));
+    const existingInDb = new Set();
+    try {
+      const dbRecords = await withMongo((db) =>
+        db
+          .collection("songs")
+          .find({
+            $or: [
+              { songId: { $in: songIds } },
+              { id: { $in: songIds } },
+            ],
+          })
+          .project({ songId: 1, id: 1 })
+          .toArray()
+      );
+      dbRecords.forEach((r) => {
+        if (r.songId) existingInDb.add(String(r.songId));
+        if (r.id) existingInDb.add(String(r.id));
+      });
+    } catch (e) {
+      console.warn("[search-songs] DB check warning:", e.message);
+    }
+
+    // Check synced lyrics for all 10 songs in parallel
+    const lyricsChecks = await Promise.allSettled(
+      items.map(async (song) => {
+        try {
+          const lData = await getSyncedLyricsData(String(song.id));
+          return {
+            hasSyncedLyrics: Boolean(lData && lData.lines && lData.lines.length > 0),
+            lyricsCount: lData?.lines?.length || 0,
+            hasPlainLyrics: Boolean(lData?.lyrics),
+            source: lData?.source || null,
+          };
+        } catch {
+          return { hasSyncedLyrics: false, lyricsCount: 0, hasPlainLyrics: false, source: null };
+        }
+      })
+    );
+
+    const shapedSongs = items.map((song, idx) => {
+      const lCheck =
+        lyricsChecks[idx].status === "fulfilled"
+          ? lyricsChecks[idx].value
+          : { hasSyncedLyrics: false, lyricsCount: 0, hasPlainLyrics: false, source: null };
+
+      const singerName =
+        (song.artists?.primary || []).map((a) => a.name).join(", ") ||
+        song.subtitle ||
+        "";
+
+      const titleScript = detectScript(song.title);
+
+      return {
+        id: String(song.id),
+        title: song.title,
+        singer: singerName,
+        album: song.album || "",
+        duration: song.duration || 0,
+        durationFormatted: formatDurationSec(song.duration || 0),
+        image: song.image || "",
+        hasSyncedLyrics: lCheck.hasSyncedLyrics,
+        lyricsCount: lCheck.lyricsCount,
+        hasPlainLyrics: lCheck.hasPlainLyrics,
+        lyricsSource: lCheck.source,
+        isSavedInDb: existingInDb.has(String(song.id)),
+        script: titleScript,
+      };
+    });
+
+    res.json({
+      query,
+      count: shapedSongs.length,
+      songs: shapedSongs,
+    });
+  } catch (err) {
+    console.error("[search-songs error]", err);
+    res.status(500).json({ error: err.message || "Failed to search songs" });
+  }
+});
+
+// Process Song Endpoint (supports direct query OR selection from search with custom title & singer)
+app.post("/api/admin/process-song", async (req, res) => {
+  const {
+    query,
+    songId: inputSongId,
+    customTitle,
+    customSinger,
+    background,
+    titleFont,
+    singerFont,
+    songFont,
+    fontSize,
+    titleFontSize,
+    singerFontSize,
+    thumbnailGap,
+    thumbnailGlowDepth,
+    lyricsGlowDepth,
+  } = req.body;
+
+  if (!inputSongId && (!query || !query.trim())) {
+    return res.status(400).json({ error: "Please enter a song name or select a song" });
+  }
+
+  try {
+    let topSong = null;
+    let songId = inputSongId ? String(inputSongId) : null;
+
+    if (songId) {
+      try {
+        const resolved = await resolveAny(songId);
+        if (resolved?.song) {
+          topSong = shapeSong(resolved.song);
+        }
+      } catch (err) {
+        console.warn("[process-song] Direct resolve failed for songId:", songId, err.message);
+      }
+    }
+
+    if (!topSong) {
+      const q = (query || "").trim();
+      const searchUrl = SAAVN_SEARCH.replace("%page", "1")
+        .replace("%q", encodeURIComponent(q))
+        .replace("%n", "5")
+        .replace("%call", "search.getResults");
+
+      const searchRes = await rawGet(searchUrl);
+      const results =
+        (searchRes.json &&
+          (searchRes.json.results || searchRes.json.data?.results)) ||
+        [];
+      const items = results.map(shapeSong).filter(Boolean);
+
+      if (!items.length) {
+        return res.json({
+          status: "not_found",
+          message: "Song is not found",
+        });
+      }
+
+      topSong = items[0];
+      songId = String(topSong.id);
+    }
+
+    // Determine final title & singer (thumbnail editor inputs override defaults)
+    const rawSinger =
+      (topSong.artists?.primary || []).map((a) => a.name).join(", ") ||
+      topSong.subtitle ||
+      "";
+
+    let finalSongTitle = (customTitle && customTitle.trim()) || topSong.title;
+    let finalSingerName =
+      customSinger !== undefined && customSinger !== null && customSinger.trim() !== ""
+        ? customSinger.trim()
+        : rawSinger;
+
+    // Transliterate title and singer to Romanized English letters if non-Latin script is detected and Groq is configured
+    if (isGroqConfigured()) {
+      if (hasNonLatinScript(finalSongTitle)) {
+        try {
+          finalSongTitle = await transliterateTextToRomanized(finalSongTitle);
+        } catch (e) {
+          console.warn("[groq] Title transliteration skipped:", e.message);
+        }
+      }
+      if (hasNonLatinScript(finalSingerName)) {
+        try {
+          finalSingerName = await transliterateTextToRomanized(finalSingerName);
+        } catch (e) {
+          console.warn("[groq] Singer transliteration skipped:", e.message);
+        }
+      }
+    }
+
+    // Check MongoDB database
     const existing = await withMongo((db) =>
       db.collection("songs").findOne({
         $or: [{ songId }, { id: songId }],
@@ -1828,22 +2065,18 @@ app.post("/api/admin/process-song", async (req, res) => {
       });
     }
 
-    // Step 3: Check if synced lyrics is present
+    // Check if synced lyrics is present
     const lyricsData = await getSyncedLyricsData(songId);
-    const singerName =
-      (topSong.artists?.primary || []).map((a) => a.name).join(", ") ||
-      topSong.subtitle ||
-      "";
 
     if (!lyricsData || !lyricsData.lines || !lyricsData.lines.length) {
       // Store in failed_songs collection so admin can review in failed list
       try {
         await withMongo((db) =>
           db.collection("failed_songs").insertOne({
-            query: query.trim(),
+            query: (query || finalSongTitle).trim(),
             songId,
-            title: topSong.title,
-            singer: singerName,
+            title: finalSongTitle,
+            singer: finalSingerName,
             reason: "Synced lyrics not found on JioSaavn or LRCLIB",
             step: "lyrics_verification",
             failedAt: new Date(),
@@ -1860,7 +2093,7 @@ app.post("/api/admin/process-song", async (req, res) => {
       });
     }
 
-    // Step 4: Prepare song parameters
+    // Prepare song parameters
     const bgFilename =
       background && background !== "auto" && background !== "random"
         ? background
@@ -1890,11 +2123,11 @@ app.post("/api/admin/process-song", async (req, res) => {
 
     const job = {
       id: jobId,
-      query: query.trim(),
+      query: (query || finalSongTitle).trim(),
       topSong,
       songId,
-      songTitle: topSong.title,
-      singer: singerName,
+      songTitle: finalSongTitle,
+      singer: finalSingerName,
       bgFilename,
       fontFamily,
       chosenTitleFont,
@@ -1904,6 +2137,7 @@ app.post("/api/admin/process-song", async (req, res) => {
       singerFontSize: singerFontSize && !isNaN(Number(singerFontSize)) ? Number(singerFontSize) : 132,
       thumbnailGap: thumbnailGap !== undefined && thumbnailGap !== null && !isNaN(Number(thumbnailGap)) ? Number(thumbnailGap) : 42,
       thumbnailGlowDepth: thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth)) ? Number(thumbnailGlowDepth) : 2,
+      lyricsGlowDepth: lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth)) ? Number(lyricsGlowDepth) : 2,
       animation,
       lyricsLines: lyricsData.lines,
       status: isBusy ? "queued" : "preparing",
@@ -1911,7 +2145,7 @@ app.post("/api/admin/process-song", async (req, res) => {
       percent: isBusy ? 0 : 5,
       message: isBusy
         ? `Queued (Position #${currentQueuePos}). Waiting for current video to finish...`
-        : `Automation started for "${topSong.title}". Generating 1080p custom thumbnail...`,
+        : `Automation started for "${finalSongTitle}". Generating 1080p custom thumbnail...`,
       outputFile: null,
       outputUrl: null,
       thumbFile: null,
@@ -1936,15 +2170,15 @@ app.post("/api/admin/process-song", async (req, res) => {
     if (isBusy) {
       res.json({
         status: "queued",
-        message: `Song "${topSong.title}" added to queue (Position #${currentQueuePos}). Video for "${automationQueue.activeJob.songTitle}" is currently processing.`,
+        message: `Song "${finalSongTitle}" added to queue (Position #${currentQueuePos}). Video for "${automationQueue.activeJob.songTitle}" is currently processing.`,
         jobId,
         queuePosition: currentQueuePos,
         isProcessing: true,
         activeSongTitle: automationQueue.activeJob.songTitle,
         song: {
           id: songId,
-          title: topSong.title,
-          singer: singerName,
+          title: finalSongTitle,
+          singer: finalSingerName,
           background: bgFilename,
           lyricsCount: lyricsData.lines.length,
         },
@@ -1952,14 +2186,14 @@ app.post("/api/admin/process-song", async (req, res) => {
     } else {
       res.json({
         status: "started",
-        message: `Song found: "${topSong.title}". Synced lyrics verified (${lyricsData.lines.length} lines). Automation pipeline started.`,
+        message: `Song found: "${finalSongTitle}". Synced lyrics verified (${lyricsData.lines.length} lines). Automation pipeline started.`,
         jobId,
         queuePosition: 0,
         isProcessing: false,
         song: {
           id: songId,
-          title: topSong.title,
-          singer: singerName,
+          title: finalSongTitle,
+          singer: finalSingerName,
           background: bgFilename,
           lyricsCount: lyricsData.lines.length,
         },
@@ -1974,6 +2208,175 @@ app.post("/api/admin/process-song", async (req, res) => {
 // Automation Queue Status Endpoint
 app.get("/api/admin/queue", (_req, res) => {
   res.json(getQueueSnapshot());
+});
+
+// Delete a Queued Item (only allowed if item is waiting in queue, not actively processing)
+app.delete("/api/admin/queue/:id", (req, res) => {
+  const { id } = req.params;
+
+  if (automationQueue.activeJob && automationQueue.activeJob.id === id) {
+    return res.status(400).json({
+      error: "Cannot remove this video: it is currently being encoded and uploaded.",
+    });
+  }
+
+  const idx = automationQueue.waitingQueue.findIndex((j) => j.id === id);
+  if (idx === -1) {
+    return res.status(404).json({ error: "Queued video not found" });
+  }
+
+  const removed = automationQueue.waitingQueue.splice(idx, 1)[0];
+
+  // Update remaining queue positions
+  automationQueue.waitingQueue.forEach((qJob, i) => {
+    qJob.queuePosition = i + 1;
+    qJob.message = `Queued (Position #${i + 1}). Waiting for current video to finish...`;
+  });
+
+  if (renderJobs.has(id)) {
+    renderJobs.delete(id);
+  }
+
+  console.log(`[queue] Admin removed job ${id} ("${removed.songTitle}") from queue`);
+
+  res.json({
+    success: true,
+    message: `Removed "${removed.songTitle}" from the queue`,
+    queue: getQueueSnapshot(),
+  });
+});
+
+// Edit a Queued Item (only allowed if item is waiting in queue, not actively processing)
+app.put("/api/admin/queue/:id", (req, res) => {
+  const { id } = req.params;
+
+  if (automationQueue.activeJob && automationQueue.activeJob.id === id) {
+    return res.status(400).json({
+      error: "Cannot edit this video: it is currently being encoded and uploaded.",
+    });
+  }
+
+  const job = automationQueue.waitingQueue.find((j) => j.id === id);
+  if (!job) {
+    return res.status(404).json({ error: "Queued video not found" });
+  }
+
+  const {
+    songTitle,
+    singer,
+    background,
+    titleFont,
+    singerFont,
+    songFont,
+    titleFontSize,
+    singerFontSize,
+    thumbnailGap,
+    thumbnailGlowDepth,
+    lyricsGlowDepth,
+    fontSize,
+  } = req.body;
+
+  if (songTitle && songTitle.trim()) job.songTitle = songTitle.trim();
+  if (singer !== undefined) job.singer = String(singer).trim();
+  if (background) job.bgFilename = background;
+  if (titleFont) job.chosenTitleFont = titleFont;
+  if (singerFont) job.chosenSingerFont = singerFont;
+  if (songFont) job.fontFamily = songFont;
+  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Number(titleFontSize);
+  if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
+  if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
+  if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
+  if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
+  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Number(fontSize);
+
+  console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
+
+  res.json({
+    success: true,
+    message: `Updated settings for "${job.songTitle}"`,
+    job: {
+      id: job.id,
+      songTitle: job.songTitle,
+      singer: job.singer,
+      bgFilename: job.bgFilename,
+      chosenTitleFont: job.chosenTitleFont,
+      chosenSingerFont: job.chosenSingerFont,
+      fontFamily: job.fontFamily,
+      titleFontSize: job.titleFontSize,
+      singerFontSize: job.singerFontSize,
+      thumbnailGap: job.thumbnailGap,
+      thumbnailGlowDepth: job.thumbnailGlowDepth,
+      lyricsGlowDepth: job.lyricsGlowDepth,
+      lyricFontSize: job.lyricFontSize,
+    },
+    queue: getQueueSnapshot(),
+  });
+});
+
+app.post("/api/admin/queue/:id/edit", (req, res) => {
+  const { id } = req.params;
+
+  if (automationQueue.activeJob && automationQueue.activeJob.id === id) {
+    return res.status(400).json({
+      error: "Cannot edit this video: it is currently being encoded and uploaded.",
+    });
+  }
+
+  const job = automationQueue.waitingQueue.find((j) => j.id === id);
+  if (!job) {
+    return res.status(404).json({ error: "Queued video not found" });
+  }
+
+  const {
+    songTitle,
+    singer,
+    background,
+    titleFont,
+    singerFont,
+    songFont,
+    titleFontSize,
+    singerFontSize,
+    thumbnailGap,
+    thumbnailGlowDepth,
+    lyricsGlowDepth,
+    fontSize,
+  } = req.body;
+
+  if (songTitle && songTitle.trim()) job.songTitle = songTitle.trim();
+  if (singer !== undefined) job.singer = String(singer).trim();
+  if (background) job.bgFilename = background;
+  if (titleFont) job.chosenTitleFont = titleFont;
+  if (singerFont) job.chosenSingerFont = singerFont;
+  if (songFont) job.fontFamily = songFont;
+  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Number(titleFontSize);
+  if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
+  if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
+  if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
+  if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
+  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Number(fontSize);
+
+  console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
+
+  res.json({
+    success: true,
+    message: `Updated settings for "${job.songTitle}"`,
+    job: {
+      id: job.id,
+      songTitle: job.songTitle,
+      singer: job.singer,
+      bgFilename: job.bgFilename,
+      chosenTitleFont: job.chosenTitleFont,
+      chosenSingerFont: job.chosenSingerFont,
+      fontFamily: job.fontFamily,
+      titleFontSize: job.titleFontSize,
+      singerFontSize: job.singerFontSize,
+      thumbnailGap: job.thumbnailGap,
+      thumbnailGlowDepth: job.thumbnailGlowDepth,
+      lyricsGlowDepth: job.lyricsGlowDepth,
+      lyricFontSize: job.lyricFontSize,
+    },
+    queue: getQueueSnapshot(),
+  });
 });
 
 // Failed Songs Management Endpoints
@@ -2087,6 +2490,99 @@ app.delete("/api/admin/song/:songId", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// Retry YouTube Upload for an already generated song
+app.post("/api/admin/song/:songId/retry-youtube", async (req, res) => {
+  try {
+    const { songId } = req.params;
+    const song = await withMongo((db) =>
+      db.collection("songs").findOne({
+        $or: [{ songId: String(songId) }, { id: String(songId) }],
+      })
+    );
+
+    if (!song) {
+      return res.status(404).json({ error: "Song record not found" });
+    }
+
+    if (song.youtubeUploaded && song.youtubeUrl) {
+      return res.json({
+        success: true,
+        message: "Song already uploaded to YouTube",
+        youtubeUrl: song.youtubeUrl,
+      });
+    }
+
+    const videoFilename = song.videoFile || `lyric_video_${song.songId}.mp4`;
+    const videoPath = path.join(DIRS.output, videoFilename);
+    const thumbFilename = song.thumbFile || `thumbnail_${song.songId}.jpg`;
+    const thumbPath = path.join(DIRS.output, thumbFilename);
+
+    if (!fs.existsSync(videoPath)) {
+      return res.status(400).json({
+        error: "Rendered video file is no longer on the server. Please re-run the automation.",
+      });
+    }
+
+    const ytTitle = `${song.title}${song.singer ? ` - ${song.singer}` : ""} (Lyrics)`;
+    const ytDesc = formatYouTubeDescription({
+      songTitle: song.title,
+      singer: song.singer,
+      duration: song.duration,
+      font: song.fontFamily || "Edo",
+      lyricsLines: [],
+    });
+
+    const ytResult = await uploadVideoToYouTube({
+      videoPath,
+      thumbPath: fs.existsSync(thumbPath) ? thumbPath : null,
+      title: ytTitle,
+      description: ytDesc,
+      tags: [song.title, song.singer, "Lyrics", "Spark Lyrics", "Music"].filter(Boolean),
+    });
+
+    if (ytResult && ytResult.uploaded) {
+      await withMongo((db) =>
+        db.collection("songs").updateOne(
+          { _id: song._id },
+          {
+            $set: {
+              youtubeUploaded: true,
+              youtubeVideoId: ytResult.videoId,
+              youtubeUrl: ytResult.youtubeUrl,
+              youtubeError: null,
+            },
+          }
+        )
+      );
+
+      return res.json({
+        success: true,
+        message: `Uploaded to YouTube: ${ytResult.youtubeUrl}`,
+        youtubeUrl: ytResult.youtubeUrl,
+      });
+    } else {
+      const errMsg = ytResult?.reason || "Upload failed";
+      await withMongo((db) =>
+        db.collection("songs").updateOne(
+          { _id: song._id },
+          { $set: { youtubeError: errMsg } }
+        )
+      );
+      return res.status(400).json({ error: errMsg });
+    }
+  } catch (err) {
+    console.error("[retry-youtube error]", err);
+    await withMongo((db) =>
+      db.collection("songs").updateOne(
+        { $or: [{ songId: String(req.params.songId) }, { id: String(req.params.songId) }] },
+        { $set: { youtubeError: err.message } }
+      )
+    ).catch(() => {});
+
+    res.status(500).json({ error: err.message || "Failed to upload to YouTube" });
   }
 });
 

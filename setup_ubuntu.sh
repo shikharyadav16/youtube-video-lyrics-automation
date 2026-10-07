@@ -26,6 +26,14 @@ sudo apt-get install -y \
   ffmpeg \
   fontconfig \
   libass9 \
+  fonts-noto \
+  fonts-indic \
+  fonts-deva \
+  fonts-guru \
+  fonts-gujr \
+  fonts-beng \
+  fonts-roboto \
+  fonts-open-sans \
   curl \
   git \
   build-essential
@@ -40,21 +48,20 @@ fi
 echo -e "✔ Node.js version: $(node -v) | npm version: $(npm -v)"
 
 # 4. Install Project Fonts & Update Fontconfig Cache
-echo -e "\n${GREEN}[4/6] Registering Edo SZ font with fontconfig...${NC}"
+echo -e "\n${GREEN}[4/6] Registering project fonts with fontconfig...${NC}"
 USER_FONT_DIR="${HOME}/.local/share/fonts"
 mkdir -p "${USER_FONT_DIR}"
 
-if [ -f "assets/fonts/edosz.ttf" ]; then
-  cp "assets/fonts/edosz.ttf" "${USER_FONT_DIR}/edosz.ttf"
-  echo -e "✔ Copied assets/fonts/edosz.ttf -> ${USER_FONT_DIR}/edosz.ttf"
-elif [ -f "edo_font/edosz.ttf" ]; then
+if [ -d "assets/fonts" ]; then
+  cp assets/fonts/*.ttf "${USER_FONT_DIR}/" 2>/dev/null || true
+  echo -e "✔ Copied assets/fonts/*.ttf -> ${USER_FONT_DIR}/"
+fi
+if [ -f "edo_font/edosz.ttf" ]; then
   cp "edo_font/edosz.ttf" "${USER_FONT_DIR}/edosz.ttf"
-  echo -e "✔ Copied edo_font/edosz.ttf -> ${USER_FONT_DIR}/edosz.ttf"
 fi
 
-fc-cache -f "${USER_FONT_DIR}"
-echo -e "✔ Font cache refreshed. Verifying font recognition:"
-fc-list : family | grep -i "edo" || echo -e "${YELLOW}Notice: Font registered in ${USER_FONT_DIR}${NC}"
+fc-cache -fv "${USER_FONT_DIR}"
+echo -e "✔ Font cache refreshed. Registered fonts in ${USER_FONT_DIR}"
 
 # 5. Create Required Output & Cache Directories
 echo -e "\n${GREEN}[5/6] Creating application directories...${NC}"

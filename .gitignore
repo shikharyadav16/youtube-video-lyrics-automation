@@ -11,6 +11,8 @@ package-lock.json.bak
 credentials/*.json
 !credentials/*.example.json
 !credentials/.gitkeep
+tokens.json
+secret.json
 
 # Large FFmpeg binary distributions (~500MB+)
 ffmpeg/

@@ -10,6 +10,8 @@ const state = {
   pollTimer: null,
   songs: [],
   youtubeConnected: false,
+  selectedSong: null,
+  searchResults: [],
 };
 
 // DOM Cache
@@ -24,12 +26,35 @@ const dom = {
   songInputForm: document.getElementById("songInputForm"),
   songInput: document.getElementById("songInput"),
   btnSave: document.getElementById("btnSave"),
+  btnSearchSongs: document.getElementById("btnSearchSongs"),
+
+  searchResultsSection: document.getElementById("searchResultsSection"),
+  searchResultCountBadge: document.getElementById("searchResultCountBadge"),
+  searchResultsLoading: document.getElementById("searchResultsLoading"),
+  searchResultsGrid: document.getElementById("searchResultsGrid"),
+
+  fontScriptNotice: document.getElementById("fontScriptNotice"),
+  noticeCurrentFont: document.getElementById("noticeCurrentFont"),
+  btnSwitchKalam: document.getElementById("btnSwitchKalam"),
+  btnSwitchPoppins: document.getElementById("btnSwitchPoppins"),
+  btnSwitchNoto: document.getElementById("btnSwitchNoto"),
+
+  selectedSongActionBar: document.getElementById("selectedSongActionBar"),
+  selectedSongImg: document.getElementById("selectedSongImg"),
+  selectedSongDisplayTitle: document.getElementById("selectedSongDisplayTitle"),
+  selectedSongDisplaySinger: document.getElementById("selectedSongDisplaySinger"),
+  selectedSongLyricsBadge: document.getElementById("selectedSongLyricsBadge"),
+  btnUploadSelectedSong: document.getElementById("btnUploadSelectedSong"),
   
   selectBg: document.getElementById("selectBg"),
   selectTitleFont: document.getElementById("selectTitleFont"),
   selectSingerFont: document.getElementById("selectSingerFont"),
   selectSongFont: document.getElementById("selectSongFont"),
   inputFontSize: document.getElementById("inputFontSize"),
+  sliderLyricsGlowDepth: document.getElementById("sliderLyricsGlowDepth"),
+  inputLyricsGlowDepth: document.getElementById("inputLyricsGlowDepth"),
+  valLyricsGlowDepthBadge: document.getElementById("valLyricsGlowDepthBadge"),
+  btnResetLyricsGlow: document.getElementById("btnResetLyricsGlow"),
   
   responseBanner: document.getElementById("responseBanner"),
   
@@ -73,6 +98,24 @@ const dom = {
   queueActiveStatus: document.getElementById("queueActiveStatus"),
   queueWaitingSection: document.getElementById("queueWaitingSection"),
   queueItemsList: document.getElementById("queueItemsList"),
+
+  queueEditModal: document.getElementById("queueEditModal"),
+  btnCloseQueueEditModal: document.getElementById("btnCloseQueueEditModal"),
+  btnCancelQueueEdit: document.getElementById("btnCancelQueueEdit"),
+  queueEditForm: document.getElementById("queueEditForm"),
+  editJobId: document.getElementById("editJobId"),
+  editSongTitle: document.getElementById("editSongTitle"),
+  editSingerName: document.getElementById("editSingerName"),
+  editTitleFont: document.getElementById("editTitleFont"),
+  editSingerFont: document.getElementById("editSingerFont"),
+  editSongFont: document.getElementById("editSongFont"),
+  editBackground: document.getElementById("editBackground"),
+  editTitleFontSize: document.getElementById("editTitleFontSize"),
+  editSingerFontSize: document.getElementById("editSingerFontSize"),
+  editThumbnailGap: document.getElementById("editThumbnailGap"),
+  editThumbnailGlowDepth: document.getElementById("editThumbnailGlowDepth"),
+  editLyricFontSize: document.getElementById("editLyricFontSize"),
+  editLyricsGlowDepth: document.getElementById("editLyricsGlowDepth"),
 
   failedSongsCard: document.getElementById("failedSongsCard"),
   failedCountBadge: document.getElementById("failedCountBadge"),
@@ -143,24 +186,299 @@ async function checkYouTubeStatus() {
   }
 }
 
-// Process Song Form Submission
-dom.songInputForm.addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const query = dom.songInput.value.trim();
-  if (!query) return;
+// Detect linguistic script of text (e.g. Devanagari/Hindi, Gurmukhi/Punjabi, etc.)
+function detectScript(text) {
+  if (!text) return "latin";
+  const s = String(text);
+  if (/[\u0900-\u097F]/.test(s)) return "devanagari";
+  if (/[\u0A00-\u0A7F]/.test(s)) return "gurmukhi";
+  if (/[\u0980-\u09FF]/.test(s)) return "bengali";
+  if (/[\u0B80-\u0BFF]/.test(s)) return "tamil";
+  if (/[\u0C00-\u0C7F]/.test(s)) return "telugu";
+  if (/[\u0A80-\u0AFF]/.test(s)) return "gujarati";
+  if (/[\u0600-\u06FF]/.test(s)) return "arabic";
+  return "latin";
+}
+
+// Check script and font compatibility, toggle alert banner
+function checkScriptAndFontCompatibility() {
+  const titleText = (document.getElementById("previewTitleInput")?.value || dom.songInput?.value || "").trim();
+  const singerText = (document.getElementById("previewSingerInput")?.value || "").trim();
+  const script1 = detectScript(titleText);
+  const script2 = detectScript(singerText);
+  const isNonLatin = script1 !== "latin" || script2 !== "latin";
+
+  if (!dom.fontScriptNotice) return;
+
+  const currentTitleFont = dom.selectTitleFont?.value || "Edo";
+  const currentSingerFont = dom.selectSingerFont?.value || "Edo";
+  const currentSongFont = dom.selectSongFont?.value || "Edo";
+
+  // Check if current fonts are ASCII/Latin-only (e.g. Edo or auto)
+  const isEdoOrLatinOnly =
+    ["edo", "auto"].includes(currentTitleFont.toLowerCase()) ||
+    ["edo", "auto"].includes(currentSingerFont.toLowerCase()) ||
+    ["edo", "auto"].includes(currentSongFont.toLowerCase());
+
+  if (isNonLatin && isEdoOrLatinOnly) {
+    dom.fontScriptNotice.style.display = "block";
+    const scriptName = script1 !== "latin" ? script1 : script2;
+    const tag = document.getElementById("noticeScriptTag");
+    if (tag) {
+      tag.textContent = `${scriptName.charAt(0).toUpperCase() + scriptName.slice(1)} Detected`;
+    }
+    if (dom.noticeCurrentFont) {
+      dom.noticeCurrentFont.textContent = currentTitleFont;
+    }
+  } else {
+    dom.fontScriptNotice.style.display = "none";
+  }
+}
+
+// Switch font to a Unicode-supported font across title, singer, and lyrics
+function applyScriptFont(fontName) {
+  if (dom.selectTitleFont) {
+    dom.selectTitleFont.value = fontName;
+    dom.selectTitleFont.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if (dom.selectSingerFont) {
+    dom.selectSingerFont.value = fontName;
+    dom.selectSingerFont.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+  if (dom.selectSongFont) {
+    dom.selectSongFont.value = fontName;
+    dom.selectSongFont.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
+  // Update UI dropdown labels if custom dropdowns are rendered
+  ["TitleFont", "SingerFont", "SongFont"].forEach((type) => {
+    const label = document.getElementById(`label${type}`);
+    const preview = document.getElementById(`preview${type}`);
+    const tag = document.getElementById(`tag${type}`);
+    const list = document.getElementById(`list${type}`);
+
+    if (label) {
+      label.textContent = fontName;
+      label.style.fontFamily = `"${fontName}", sans-serif`;
+    }
+    if (preview) {
+      preview.style.fontFamily = `"${fontName}", sans-serif`;
+      preview.textContent = `Preview: (${fontName})`;
+    }
+    if (tag) tag.textContent = "Unicode";
+    if (list) {
+      list.querySelectorAll(".font-option-item").forEach((it) => {
+        if (it.dataset.value === fontName) {
+          it.classList.add("selected");
+        } else {
+          it.classList.remove("selected");
+        }
+      });
+    }
+  });
+
+  if (dom.fontScriptNotice) {
+    dom.fontScriptNotice.style.display = "none";
+  }
+
+  if (window.triggerThumbnailCanvasRedraw) {
+    window.triggerThumbnailCanvasRedraw();
+  }
+}
+
+// Bind font switch buttons
+if (dom.btnSwitchKalam) {
+  dom.btnSwitchKalam.addEventListener("click", () => applyScriptFont("Kalam"));
+}
+if (dom.btnSwitchPoppins) {
+  dom.btnSwitchPoppins.addEventListener("click", () => applyScriptFont("Poppins"));
+}
+if (dom.btnSwitchNoto) {
+  dom.btnSwitchNoto.addEventListener("click", () => applyScriptFont("Noto Sans Devanagari"));
+}
+
+// Search Top 10 Songs with Synced Lyrics Availability Check
+async function searchTopSongs(query) {
+  const q = (query || dom.songInput.value || "").trim();
+  if (!q) {
+    showBanner("not_found", "Please enter a song name to search.");
+    return;
+  }
+
+  if (dom.searchResultsSection) dom.searchResultsSection.style.display = "block";
+  if (dom.searchResultsLoading) dom.searchResultsLoading.style.display = "block";
+  if (dom.searchResultsGrid) dom.searchResultsGrid.innerHTML = "";
+  if (dom.btnSearchSongs) {
+    dom.btnSearchSongs.disabled = true;
+    dom.btnSearchSongs.textContent = "Searching...";
+  }
+
+  try {
+    const res = await fetch(`/api/admin/search-songs?q=${encodeURIComponent(q)}`);
+    const data = await res.json();
+
+    if (dom.searchResultsLoading) dom.searchResultsLoading.style.display = "none";
+    if (dom.btnSearchSongs) {
+      dom.btnSearchSongs.disabled = false;
+      dom.btnSearchSongs.textContent = "Search Top 10";
+    }
+
+    if (!res.ok || !data.songs || !data.songs.length) {
+      if (dom.searchResultCountBadge) dom.searchResultCountBadge.textContent = "0 Songs";
+      if (dom.searchResultsGrid) {
+        dom.searchResultsGrid.innerHTML = `
+          <div style="grid-column: 1 / -1; padding: 28px; text-align: center; color: var(--color-text-secondary); font-size: 13px;">
+            No songs found for "${escapeHtml(q)}". Try a different search term or check spelling.
+          </div>
+        `;
+      }
+      return;
+    }
+
+    state.searchResults = data.songs;
+    if (dom.searchResultCountBadge) {
+      dom.searchResultCountBadge.textContent = `${data.songs.length} Found`;
+    }
+
+    renderSearchResults(data.songs);
+  } catch (err) {
+    console.error("Search songs error:", err);
+    if (dom.searchResultsLoading) dom.searchResultsLoading.style.display = "none";
+    if (dom.btnSearchSongs) {
+      dom.btnSearchSongs.disabled = false;
+      dom.btnSearchSongs.textContent = "Search Top 10";
+    }
+    showBanner("not_found", "Failed to connect to search service.");
+  }
+}
+
+// Render Top 10 Results with cover artwork, title, singer, and synced lyrics badges
+function renderSearchResults(songs) {
+  if (!dom.searchResultsGrid) return;
+
+  dom.searchResultsGrid.innerHTML = songs
+    .map((song) => {
+      const isSelected = state.selectedSong && state.selectedSong.id === song.id;
+      const lyricsBadge = song.hasSyncedLyrics
+        ? `<span class="badge-synced-yes">Synced Lyrics Available (${song.lyricsCount} lines)</span>`
+        : `<span class="badge-synced-no">No Synced Lyrics</span>`;
+
+      const dbBadge = song.isSavedInDb
+        ? `<span class="badge-in-db">In Database</span>`
+        : "";
+
+      return `
+        <div class="search-song-card ${isSelected ? "selected" : ""}" data-song-id="${song.id}" tabindex="0" role="button">
+          <img class="search-song-art" src="${escapeHtml(song.image || "/assets/background/1.png")}" alt="${escapeHtml(song.title)}" loading="lazy" width="56" height="56" style="width: 56px; height: 56px; min-width: 56px; min-height: 56px; max-width: 56px; max-height: 56px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+          <div class="search-song-info">
+            <div class="search-song-title" title="${escapeHtml(song.title)}">${escapeHtml(song.title)}</div>
+            <div class="search-song-singer" title="${escapeHtml(song.singer || "Unknown Artist")}">${escapeHtml(song.singer || "Unknown Artist")}</div>
+            <div class="search-song-badges">
+              ${lyricsBadge}
+              ${dbBadge}
+            </div>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+
+  // Attach click listener to each card
+  dom.searchResultsGrid.querySelectorAll(".search-song-card").forEach((card) => {
+    card.addEventListener("click", () => {
+      const songId = card.dataset.songId;
+      const song = songs.find((s) => s.id === songId);
+      if (song) selectSongForProduction(song, card);
+    });
+  });
+}
+
+// Select a song for production: updates inputs, thumbnail composer, and action bar
+function selectSongForProduction(song, cardEl) {
+  state.selectedSong = song;
+
+  // Highlight card
+  if (dom.searchResultsGrid) {
+    dom.searchResultsGrid.querySelectorAll(".search-song-card").forEach((c) => c.classList.remove("selected"));
+  }
+  if (cardEl) cardEl.classList.add("selected");
+
+  // Populate search input
+  if (dom.songInput) {
+    dom.songInput.value = `${song.title}${song.singer ? " - " + song.singer : ""}`;
+  }
+
+  // Populate thumbnail editor inputs (user requirement: title and singer displayed in thumbnail editor)
+  const previewTitleInput = document.getElementById("previewTitleInput");
+  const previewSingerInput = document.getElementById("previewSingerInput");
+  if (previewTitleInput) previewTitleInput.value = song.title;
+  if (previewSingerInput) previewSingerInput.value = song.singer || "";
+
+  // Update selected song action bar
+  if (dom.selectedSongActionBar) dom.selectedSongActionBar.style.display = "flex";
+  if (dom.selectedSongImg) dom.selectedSongImg.src = song.image || "/assets/background/1.png";
+  if (dom.selectedSongDisplayTitle) dom.selectedSongDisplayTitle.textContent = song.title;
+  if (dom.selectedSongDisplaySinger) dom.selectedSongDisplaySinger.textContent = song.singer || "Unknown Artist";
+
+  if (dom.selectedSongLyricsBadge) {
+    if (song.hasSyncedLyrics) {
+      dom.selectedSongLyricsBadge.className = "selected-lyrics-badge yes";
+      dom.selectedSongLyricsBadge.textContent = `Synced Lyrics Ready (${song.lyricsCount} lines)`;
+    } else {
+      dom.selectedSongLyricsBadge.className = "selected-lyrics-badge no";
+      dom.selectedSongLyricsBadge.textContent = "Synced Lyrics Not Found";
+    }
+  }
+
+  // Check script compatibility
+  checkScriptAndFontCompatibility();
+
+  // Redraw live thumbnail canvas
+  if (window.triggerThumbnailCanvasRedraw) {
+    window.triggerThumbnailCanvasRedraw();
+  }
+
+  // Scroll smoothly to thumbnail editor action bar
+  if (dom.selectedSongActionBar) {
+    dom.selectedSongActionBar.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+}
+
+// Execute Automation Pipeline for a song (processes with customized title & singer)
+async function executeProcessSong(overridePayload = {}) {
+  const query = overridePayload.query || dom.songInput.value.trim();
+  const songId = overridePayload.songId || state.selectedSong?.id || null;
+
+  if (!query && !songId) {
+    showBanner("not_found", "Please enter a song name or select a song from the results list.");
+    return;
+  }
 
   clearBanner();
   dom.btnSave.disabled = true;
   dom.btnSave.textContent = "Checking...";
+  if (dom.btnUploadSelectedSong) {
+    dom.btnUploadSelectedSong.disabled = true;
+    dom.btnUploadSelectedSong.textContent = "Starting Automation...";
+  }
+
+  const previewTitleInput = document.getElementById("previewTitleInput");
+  const previewSingerInput = document.getElementById("previewSingerInput");
 
   try {
     const payload = {
-      query,
+      query: query || (state.selectedSong ? `${state.selectedSong.title} ${state.selectedSong.singer}` : ""),
+      songId,
+      customTitle: previewTitleInput ? previewTitleInput.value.trim() : null,
+      customSinger: previewSingerInput ? previewSingerInput.value.trim() : null,
       background: dom.selectBg ? dom.selectBg.value : "auto",
       titleFont: dom.selectTitleFont ? dom.selectTitleFont.value : "auto",
       singerFont: dom.selectSingerFont ? dom.selectSingerFont.value : "auto",
       songFont: dom.selectSongFont ? dom.selectSongFont.value : "auto",
       fontSize: dom.inputFontSize ? Number(dom.inputFontSize.value) || 150 : 150,
+      lyricsGlowDepth: dom.inputLyricsGlowDepth
+        ? Number(dom.inputLyricsGlowDepth.value) || 2
+        : 2,
       titleFontSize: document.getElementById("numTitleFontSize")
         ? Number(document.getElementById("numTitleFontSize").value) || 280
         : 280,
@@ -173,6 +491,7 @@ dom.songInputForm.addEventListener("submit", async (e) => {
       thumbnailGlowDepth: document.getElementById("numThumbGlowDepth")
         ? Number(document.getElementById("numThumbGlowDepth").value) || 2
         : 2,
+      ...overridePayload,
     };
 
     const res = await fetch("/api/admin/process-song", {
@@ -183,7 +502,11 @@ dom.songInputForm.addEventListener("submit", async (e) => {
 
     const data = await res.json();
     dom.btnSave.disabled = false;
-    dom.btnSave.textContent = "Save & Automate";
+    dom.btnSave.textContent = "Direct Automate";
+    if (dom.btnUploadSelectedSong) {
+      dom.btnUploadSelectedSong.disabled = false;
+      dom.btnUploadSelectedSong.textContent = "Queue & Upload Selected Song";
+    }
 
     if (!res.ok) {
       showBanner("not_found", data.error || "Request failed");
@@ -227,10 +550,38 @@ dom.songInputForm.addEventListener("submit", async (e) => {
     }
   } catch (err) {
     dom.btnSave.disabled = false;
-    dom.btnSave.textContent = "Save & Automate";
+    dom.btnSave.textContent = "Direct Automate";
+    if (dom.btnUploadSelectedSong) {
+      dom.btnUploadSelectedSong.disabled = false;
+      dom.btnUploadSelectedSong.textContent = "Queue & Upload Selected Song";
+    }
     showBanner("not_found", "Network or server connection error.");
   }
+}
+
+// Hook Direct Automate Form Submit
+dom.songInputForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  await executeProcessSong();
 });
+
+// Hook Search Button
+if (dom.btnSearchSongs) {
+  dom.btnSearchSongs.addEventListener("click", () => {
+    searchTopSongs(dom.songInput.value.trim());
+  });
+}
+
+// Hook Final Button: Queue & Upload Selected Song
+if (dom.btnUploadSelectedSong) {
+  dom.btnUploadSelectedSong.addEventListener("click", async () => {
+    if (!state.selectedSong) {
+      showBanner("not_found", "Please select a song from the results list first.");
+      return;
+    }
+    await executeProcessSong({ songId: state.selectedSong.id });
+  });
+}
 
 // Start Active Automation Tracker
 function startActiveTracker(jobId, song, isQueued = false, queuePosition = 1) {
@@ -383,7 +734,18 @@ async function pollJobStatus(jobId, song) {
           dom.resultThumbBadge.className = "thumb-status-badge";
         }
         dom.resultMeta.textContent = `${job.singer || song?.singer || ""} | ${engineLabel}`;
-        if (dom.resultCleanStatus) dom.resultCleanStatus.style.display = "none";
+        if (dom.resultCleanStatus) {
+          if (job.youtubeError) {
+            dom.resultCleanStatus.style.display = "block";
+            dom.resultCleanStatus.style.color = "#f59e0b";
+            const isDailyLimit = /exceeded the number of videos|uploadLimitExceeded/i.test(job.youtubeError);
+            dom.resultCleanStatus.innerHTML = isDailyLimit
+              ? `⚠️ <strong>YouTube Upload Paused:</strong> Daily channel upload limit reached by YouTube (24h cooldown). The 1080p video and thumbnail are safely preserved on the server and can be retried once the limit resets.`
+              : `⚠️ <strong>YouTube Upload Error:</strong> ${escapeHtml(job.youtubeError)}`;
+          } else {
+            dom.resultCleanStatus.style.display = "none";
+          }
+        }
         if (job.outputUrl) {
           dom.resultVideoDownload.href = job.outputUrl;
           dom.resultVideoDownload.style.display = "inline-flex";
@@ -455,9 +817,23 @@ function renderLibraryTable(songs) {
         })
       : "Recently";
 
-    const ytBadge = s.youtubeUploaded && s.youtubeUrl
-      ? `<a href="${s.youtubeUrl}" target="_blank" class="table-action-link">Watch on YouTube</a>`
-      : `<span class="badge-pill yt-no">Not Uploaded</span>`;
+    let ytBadge = `<span class="badge-pill yt-no">Not Uploaded</span>`;
+    if (s.youtubeUploaded && s.youtubeUrl) {
+      ytBadge = `<a href="${s.youtubeUrl}" target="_blank" class="table-action-link" style="color: #ff0033; font-weight: 600;"><i class="fa-brands fa-youtube"></i> Watch</a>`;
+    } else if (s.youtubeError) {
+      const isDailyLimit = /exceeded the number of videos|uploadLimitExceeded/i.test(s.youtubeError);
+      const shortErr = isDailyLimit ? "Daily Quota Hit" : "Upload Error";
+      ytBadge = `
+        <div style="display: flex; flex-direction: column; gap: 4px; align-items: flex-start;">
+          <span class="badge-pill yt-no" title="${escapeHtml(s.youtubeError)}" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); cursor: help;">
+            ⚠️ ${shortErr}
+          </span>
+          <button class="btn-secondary btn-retry-yt" data-id="${s.songId}" style="height: 24px; padding: 0 8px; font-size: 11px; margin-top: 2px;">
+            Retry Upload
+          </button>
+        </div>
+      `;
+    }
 
     const downloadLink = s.videoUrl
       ? `<a href="${s.videoUrl}" download class="table-action-link">Download MP4</a>`
@@ -489,8 +865,37 @@ function renderLibraryTable(songs) {
     const btnDel = tr.querySelector(".btn-danger");
     btnDel.addEventListener("click", () => deleteSong(s.songId, s.title));
 
+    // Attach retry YouTube action
+    const btnRetry = tr.querySelector(".btn-retry-yt");
+    if (btnRetry) {
+      btnRetry.addEventListener("click", () => retryYouTubeUpload(s.songId, btnRetry));
+    }
+
     dom.songsTableBody.appendChild(tr);
   });
+}
+
+// Retry YouTube Upload from Library Table
+async function retryYouTubeUpload(songId, btn) {
+  if (!btn) return;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Uploading...";
+  try {
+    const res = await fetch(`/api/admin/song/${songId}/retry-youtube`, { method: "POST" });
+    const data = await res.json();
+    if (res.ok && data.success) {
+      showBanner("completed", `Uploaded to YouTube: ${data.youtubeUrl}`);
+      await loadLibrary();
+    } else {
+      alert(`YouTube upload error:\n${data.error || "Failed to upload to YouTube."}`);
+    }
+  } catch (err) {
+    alert(`Request error: ${err.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
 }
 
 // Delete Song from MongoDB
@@ -526,7 +931,7 @@ dom.tableSearchInput.addEventListener("input", (e) => {
 // Refresh Library Button
 dom.btnRefreshLibrary.addEventListener("click", loadLibrary);
 
-// Load and Render Queue Status
+// Load and Render Queue Status with Delete and Edit Options
 async function loadQueue() {
   try {
     const res = await fetch("/api/admin/queue");
@@ -550,7 +955,7 @@ async function loadQueue() {
       dom.queueLengthBadge.textContent = `${waitingItems.length} in line`;
     }
 
-    // Active Job
+    // Active Job (Cannot be edited or deleted while actively rendering)
     if (data.activeJob && dom.queueActiveBox) {
       dom.queueActiveBox.style.display = "block";
       if (dom.queueActiveTitle) dom.queueActiveTitle.textContent = data.activeJob.songTitle || "Processing Song";
@@ -560,31 +965,186 @@ async function loadQueue() {
       dom.queueActiveBox.style.display = "none";
     }
 
-    // Waiting in Queue Section
+    // Waiting in Queue Section (Removable & Editable)
     if (waitingItems.length > 0 && dom.queueWaitingSection && dom.queueItemsList) {
       dom.queueWaitingSection.style.display = "block";
       dom.queueItemsList.innerHTML = waitingItems
         .map(
           (item) => `
-          <div class="queue-item-row">
+          <div class="queue-item-row" data-id="${item.id}">
             <div class="queue-item-left">
               <span class="queue-item-pos">#${item.queuePosition}</span>
               <div>
                 <span class="queue-item-title">${escapeHtml(item.songTitle)}</span>
-                <span class="queue-item-artist">${escapeHtml(item.singer || "")}</span>
+                <span class="queue-item-artist">${escapeHtml(item.singer || "Unknown Artist")}</span>
+                <div class="queue-item-meta-tags">
+                  <span>Font: ${escapeHtml(item.chosenTitleFont || "Auto")}</span>
+                  <span>BG: ${escapeHtml(item.background || "Auto")}</span>
+                  <span>Lyrics: ${escapeHtml(item.fontFamily || "Auto")} (${item.lyricFontSize || 150}px, glow: ${item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 2}px)</span>
+                </div>
               </div>
             </div>
-            <span class="queue-item-wait-pill">Waiting in Queue</span>
+            <div class="queue-item-right">
+              <span class="queue-item-wait-pill">Waiting in Queue</span>
+              <div class="queue-item-actions">
+                <button type="button" class="btn-queue-edit" data-id="${item.id}" title="Edit queued video settings">Edit</button>
+                <button type="button" class="btn-queue-delete" data-id="${item.id}" title="Remove from queue">Delete</button>
+              </div>
+            </div>
           </div>
         `
         )
         .join("");
+
+      // Attach Delete Listener for each waiting job
+      dom.queueItemsList.querySelectorAll(".btn-queue-delete").forEach((btn) => {
+        btn.addEventListener("click", async (e) => {
+          e.stopPropagation();
+          const jobId = btn.dataset.id;
+          const row = btn.closest(".queue-item-row");
+          const songName = row?.querySelector(".queue-item-title")?.textContent || "this song";
+          if (!confirm(`Are you sure you want to remove "${songName}" from the processing queue?`)) return;
+
+          btn.disabled = true;
+          btn.textContent = "Removing...";
+
+          try {
+            const delRes = await fetch(`/api/admin/queue/${jobId}`, { method: "DELETE" });
+            const delData = await delRes.json();
+            if (delRes.ok) {
+              showBanner("started", delData.message || `Removed "${songName}" from queue.`);
+              await loadQueue();
+            } else {
+              alert(delData.error || "Failed to remove item from queue.");
+              btn.disabled = false;
+              btn.textContent = "Delete";
+            }
+          } catch (err) {
+            console.error("Queue delete error:", err);
+            btn.disabled = false;
+            btn.textContent = "Delete";
+          }
+        });
+      });
+
+      // Attach Edit Listener for each waiting job
+      dom.queueItemsList.querySelectorAll(".btn-queue-edit").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const jobId = btn.dataset.id;
+          const item = waitingItems.find((w) => w.id === jobId);
+          if (item) openQueueEditModal(item);
+        });
+      });
     } else if (dom.queueWaitingSection) {
       dom.queueWaitingSection.style.display = "none";
     }
   } catch (err) {
     console.warn("Failed to load queue:", err);
   }
+}
+
+// Queue Item Edit Modal Logic
+function openQueueEditModal(item) {
+  if (!dom.queueEditModal) return;
+
+  if (dom.editJobId) dom.editJobId.value = item.id;
+  if (dom.editSongTitle) dom.editSongTitle.value = item.songTitle || "";
+  if (dom.editSingerName) dom.editSingerName.value = item.singer || "";
+  if (dom.editTitleFont) dom.editTitleFont.value = item.chosenTitleFont || "Edo";
+  if (dom.editSingerFont) dom.editSingerFont.value = item.chosenSingerFont || "Edo";
+  if (dom.editSongFont) dom.editSongFont.value = item.fontFamily || "Edo";
+  if (dom.editTitleFontSize) dom.editTitleFontSize.value = item.titleFontSize || 280;
+  if (dom.editSingerFontSize) dom.editSingerFontSize.value = item.singerFontSize || 132;
+  if (dom.editThumbnailGap) dom.editThumbnailGap.value = item.thumbnailGap !== undefined ? item.thumbnailGap : 42;
+  if (dom.editThumbnailGlowDepth) dom.editThumbnailGlowDepth.value = item.thumbnailGlowDepth !== undefined ? item.thumbnailGlowDepth : 2;
+  if (dom.editLyricFontSize) dom.editLyricFontSize.value = item.lyricFontSize || 150;
+  if (dom.editLyricsGlowDepth) dom.editLyricsGlowDepth.value = item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 2;
+
+  // Populate background options in modal if available
+  if (dom.editBackground && window.__availableBackgrounds) {
+    dom.editBackground.innerHTML = '<option value="auto">Auto (Keep Current)</option>';
+    window.__availableBackgrounds.forEach((bg) => {
+      const opt = document.createElement("option");
+      opt.value = bg.filename;
+      opt.textContent = bg.filename;
+      if (item.background === bg.filename) opt.selected = true;
+      dom.editBackground.appendChild(opt);
+    });
+  }
+
+  dom.queueEditModal.classList.add("active");
+}
+
+function closeQueueEditModal() {
+  if (dom.queueEditModal) dom.queueEditModal.classList.remove("active");
+}
+
+if (dom.btnCloseQueueEditModal) {
+  dom.btnCloseQueueEditModal.addEventListener("click", closeQueueEditModal);
+}
+if (dom.btnCancelQueueEdit) {
+  dom.btnCancelQueueEdit.addEventListener("click", closeQueueEditModal);
+}
+if (dom.queueEditModal) {
+  dom.queueEditModal.addEventListener("click", (e) => {
+    if (e.target === dom.queueEditModal) closeQueueEditModal();
+  });
+}
+
+// Save Queue Edit Form Submission
+if (dom.queueEditForm) {
+  dom.queueEditForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const jobId = dom.editJobId.value;
+    if (!jobId) return;
+
+    const payload = {
+      songTitle: dom.editSongTitle.value.trim(),
+      singer: dom.editSingerName.value.trim(),
+      titleFont: dom.editTitleFont.value,
+      singerFont: dom.editSingerFont.value,
+      songFont: dom.editSongFont.value,
+      background: dom.editBackground.value,
+      titleFontSize: Number(dom.editTitleFontSize.value) || 280,
+      singerFontSize: Number(dom.editSingerFontSize.value) || 132,
+      thumbnailGap: Number(dom.editThumbnailGap.value) || 42,
+      thumbnailGlowDepth: Number(dom.editThumbnailGlowDepth.value) || 2,
+      fontSize: dom.editLyricFontSize ? Number(dom.editLyricFontSize.value) || 150 : 150,
+      lyricsGlowDepth: dom.editLyricsGlowDepth ? Number(dom.editLyricsGlowDepth.value) || 2 : 2,
+    };
+
+    try {
+      const saveBtn = document.getElementById("btnSaveQueueEdit");
+      if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.textContent = "Saving...";
+      }
+
+      const res = await fetch(`/api/admin/queue/${jobId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = "Save Changes";
+      }
+
+      const data = await res.json();
+      if (res.ok) {
+        closeQueueEditModal();
+        showBanner("started", data.message || "Queue item updated successfully.");
+        await loadQueue();
+      } else {
+        alert(data.error || "Failed to update queue item.");
+      }
+    } catch (err) {
+      console.error("Queue edit submit error:", err);
+      alert("Failed to update queued item due to network error.");
+    }
+  });
 }
 
 // Load and Render Failed Songs List
@@ -903,7 +1463,9 @@ function initThumbnailLiveComposer() {
     }
     return new Promise((resolve) => {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      if (/^https?:\/\//i.test(url)) {
+        img.crossOrigin = "anonymous";
+      }
       img.onload = () => {
         cachedBgImage = img;
         cachedBgUrl = url;
@@ -1079,7 +1641,7 @@ function initThumbnailLiveComposer() {
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = glowDepth;
     ctx.lineWidth = 0;
-    ctx.font = `${titleSize}px "${titleFontName}", "Edo", sans-serif`;
+    ctx.font = `${titleSize}px "${titleFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
 
     if (isTwoLines) {
       const halfSpacing = titleSize * 0.52;
@@ -1101,7 +1663,7 @@ function initThumbnailLiveComposer() {
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = glowDepth;
       ctx.lineWidth = 0;
-      ctx.font = `${singerSize}px "${singerFontName}", "Edo", sans-serif`;
+      ctx.font = `${singerSize}px "${singerFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
       ctx.fillText(singerRaw, 960, singerY);
       ctx.restore();
     }
@@ -1180,10 +1742,16 @@ function initThumbnailLiveComposer() {
 
   // Sample Text Inputs
   if (previewTitleInput) {
-    previewTitleInput.addEventListener("input", renderThumbnailCanvas);
+    previewTitleInput.addEventListener("input", () => {
+      checkScriptAndFontCompatibility();
+      renderThumbnailCanvas();
+    });
   }
   if (previewSingerInput) {
-    previewSingerInput.addEventListener("input", renderThumbnailCanvas);
+    previewSingerInput.addEventListener("input", () => {
+      checkScriptAndFontCompatibility();
+      renderThumbnailCanvas();
+    });
   }
 
   // Auto-sync from main song search input
@@ -1202,23 +1770,38 @@ function initThumbnailLiveComposer() {
       } else {
         if (previewTitleInput) previewTitleInput.value = val;
       }
+      checkScriptAndFontCompatibility();
       renderThumbnailCanvas();
     });
   }
 
   // Native Select change events
   if (dom.selectTitleFont) {
-    dom.selectTitleFont.addEventListener("change", renderThumbnailCanvas);
+    dom.selectTitleFont.addEventListener("change", () => {
+      checkScriptAndFontCompatibility();
+      renderThumbnailCanvas();
+    });
   }
   if (dom.selectSingerFont) {
-    dom.selectSingerFont.addEventListener("change", renderThumbnailCanvas);
+    dom.selectSingerFont.addEventListener("change", () => {
+      checkScriptAndFontCompatibility();
+      renderThumbnailCanvas();
+    });
+  }
+  if (dom.selectSongFont) {
+    dom.selectSongFont.addEventListener("change", () => {
+      checkScriptAndFontCompatibility();
+    });
   }
   if (dom.selectBg) {
     dom.selectBg.addEventListener("change", renderThumbnailCanvas);
   }
 
   // Initial render
-  setTimeout(renderThumbnailCanvas, 150);
+  setTimeout(() => {
+    checkScriptAndFontCompatibility();
+    renderThumbnailCanvas();
+  }, 150);
 }
 
 // Custom Font Dropdowns Setup
@@ -1371,6 +1954,43 @@ function setupCustomFontDropdowns() {
   });
 }
 
+// Lyrics Glow & Shadow Controls & Live Preview
+function initLyricsControls() {
+  function updateLyricsPreviewStyle() {
+    const depth = dom.inputLyricsGlowDepth ? Number(dom.inputLyricsGlowDepth.value) || 0 : 2;
+    if (dom.valLyricsGlowDepthBadge) {
+      dom.valLyricsGlowDepthBadge.textContent = `${depth}px`;
+    }
+    const previewSongFont = document.getElementById("previewSongFont");
+    if (previewSongFont) {
+      previewSongFont.style.textShadow = depth > 0
+        ? `0 0 ${depth * 2}px rgba(0,0,0,0.85), 0 ${depth}px ${depth * 1.5}px rgba(0,0,0,0.9)`
+        : "none";
+    }
+  }
+
+  if (dom.sliderLyricsGlowDepth && dom.inputLyricsGlowDepth) {
+    dom.sliderLyricsGlowDepth.addEventListener("input", () => {
+      dom.inputLyricsGlowDepth.value = dom.sliderLyricsGlowDepth.value;
+      updateLyricsPreviewStyle();
+    });
+    dom.inputLyricsGlowDepth.addEventListener("input", () => {
+      dom.sliderLyricsGlowDepth.value = dom.inputLyricsGlowDepth.value;
+      updateLyricsPreviewStyle();
+    });
+  }
+
+  if (dom.btnResetLyricsGlow) {
+    dom.btnResetLyricsGlow.addEventListener("click", () => {
+      if (dom.sliderLyricsGlowDepth) dom.sliderLyricsGlowDepth.value = 2;
+      if (dom.inputLyricsGlowDepth) dom.inputLyricsGlowDepth.value = 2;
+      updateLyricsPreviewStyle();
+    });
+  }
+
+  updateLyricsPreviewStyle();
+}
+
 // Initial Setup
 window.addEventListener("DOMContentLoaded", async () => {
   // Check URL parameters (e.g. ?youtube=connected)
@@ -1383,6 +2003,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   await setupBackgroundPicker();
   setupCustomFontDropdowns();
   initThumbnailLiveComposer();
+  initLyricsControls();
 
   await checkSystemEngineStatus();
   await checkYouTubeStatus();

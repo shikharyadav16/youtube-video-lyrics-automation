@@ -9,10 +9,10 @@
   <!-- Apple-inspired typography & user requested font families -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700&family=Cormorant+Garamond:wght@700&family=Inter:wght@600;700&family=Kalam:wght@700&family=Manrope:wght@600;700;800&family=Montserrat:wght@600;700;800&family=Oswald:wght@600;700&family=Outfit:wght@600;700&family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@700&family=Poppins:wght@600;700;800&family=Raleway:wght@700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Caveat:wght@600;700&family=Cinzel:wght@700&family=Cormorant+Garamond:wght@700&family=Inter:wght@600;700&family=Kalam:wght@700&family=Manrope:wght@600;700;800&family=Montserrat:wght@600;700;800&family=Noto+Sans+Devanagari:wght@600;700;800&family=Oswald:wght@600;700&family=Outfit:wght@600;700&family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@700&family=Poppins:wght@600;700;800&family=Raleway:wght@700&family=Space+Grotesk:wght@600;700&display=swap" rel="stylesheet">
   
   <!-- Apple Light Cream Theme Stylesheet (Zero Icons, Zero Emojis) -->
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=2.2">
 </head>
 <body>
 
@@ -60,15 +60,73 @@
               type="text"
               id="songInput"
               class="song-text-input"
-              placeholder="Enter song name (e.g. Tum Hi Ho, Kesariya, Shape of You)..."
+              placeholder="Search song name or artist (e.g. Tum Hi Ho, Kesariya, Shape of You)..."
               autocomplete="off"
               spellcheck="false"
               required
             >
           </div>
-          <button type="submit" id="btnSave" class="btn-primary">
-            Save &amp; Automate
+          <button type="button" id="btnSearchSongs" class="btn-primary">
+            Search Top 10
           </button>
+          <button type="submit" id="btnSave" class="btn-secondary" title="Quickly automate the first match">
+            Direct Automate
+          </button>
+        </div>
+
+        <!-- Top 10 Search Results Section -->
+        <div id="searchResultsSection" class="search-results-section" style="display: none;">
+          <div class="search-results-header">
+            <div class="search-results-title-group">
+              <span class="search-results-title">Search Results</span>
+              <span id="searchResultCountBadge" class="search-count-badge">0 Songs</span>
+            </div>
+            <span class="search-results-hint">Click any song to load into the thumbnail editor &amp; production queue</span>
+          </div>
+
+          <div id="searchResultsLoading" class="search-loading-box" style="display: none;">
+            <div class="search-spinner"></div>
+            <span>Searching JioSaavn &amp; verifying synced lyrics status...</span>
+          </div>
+
+          <div id="searchResultsGrid" class="search-results-grid"></div>
+
+          <!-- Selected Song Action Bar -->
+          <div class="selected-song-action-bar" id="selectedSongActionBar" style="display: none;">
+            <div class="selected-song-info">
+              <img id="selectedSongImg" class="selected-song-img" src="" alt="Album Artwork" width="48" height="48" style="width: 48px; height: 48px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" />
+              <div class="selected-song-text">
+                <div id="selectedSongDisplayTitle" class="selected-song-title">Song Title</div>
+                <div id="selectedSongDisplaySinger" class="selected-song-singer">Artist Name</div>
+              </div>
+              <span id="selectedSongLyricsBadge" class="selected-lyrics-badge">Synced Lyrics: Ready</span>
+            </div>
+            <button type="button" id="btnUploadSelectedSong" class="btn-upload-selected">
+              Queue &amp; Upload Selected Song
+            </button>
+          </div>
+        </div>
+
+        <!-- Language Script Font Alert Banner -->
+        <div id="fontScriptNotice" class="font-script-notice" style="display: none;">
+          <div class="notice-header-row">
+            <span class="notice-badge">Language Notice</span>
+            <span class="notice-script-tag" id="noticeScriptTag">Devanagari Detected</span>
+          </div>
+          <p class="notice-desc">
+            The selected font (<strong id="noticeCurrentFont">Edo</strong>) only contains Latin/English letters and will render square boxes for this song's title or lyrics. Please select a font with full language glyph support:
+          </p>
+          <div class="notice-actions-row">
+            <button type="button" id="btnSwitchKalam" class="btn-notice-switch" data-font="Kalam">
+              Switch to Kalam (Artistic Brush)
+            </button>
+            <button type="button" id="btnSwitchPoppins" class="btn-notice-switch" data-font="Poppins">
+              Switch to Poppins (Modern Sans)
+            </button>
+            <button type="button" id="btnSwitchNoto" class="btn-notice-switch" data-font="Noto Sans Devanagari">
+              Switch to Noto Sans Devanagari
+            </button>
+          </div>
         </div>
 
         <!-- Admin Customization Options Panel -->
@@ -186,6 +244,10 @@
                     <span class="font-option-sample" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
                     <span class="font-option-meta">Editorial</span>
                   </div>
+                  <div class="font-option-item" data-value="Noto Sans Devanagari" role="option">
+                    <span class="font-option-sample" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</span>
+                    <span class="font-option-meta">Devanagari</span>
+                  </div>
                 </div>
               </div>
 
@@ -198,6 +260,7 @@
                 <option value="Cinzel" style="font-family: 'Cinzel', serif;">Cinzel</option>
                 <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat</option>
                 <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam</option>
+                <option value="Noto Sans Devanagari" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</option>
                 <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald</option>
                 <option value="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
                 <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
@@ -283,6 +346,10 @@
                     <span class="font-option-sample" style="font-family: 'Manrope', sans-serif;">Manrope</span>
                     <span class="font-option-meta">Modern</span>
                   </div>
+                  <div class="font-option-item" data-value="Noto Sans Devanagari" role="option">
+                    <span class="font-option-sample" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</span>
+                    <span class="font-option-meta">Devanagari</span>
+                  </div>
                 </div>
               </div>
 
@@ -299,6 +366,7 @@
                 <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
                 <option value="Caveat" style="font-family: 'Caveat', cursive;">Caveat</option>
                 <option value="Kalam" style="font-family: 'Kalam', cursive;">Kalam</option>
+                <option value="Noto Sans Devanagari" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</option>
                 <option value="Cormorant Garamond" style="font-family: 'Cormorant Garamond', serif;">Cormorant Garamond</option>
                 <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</option>
                 <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope</option>
@@ -386,6 +454,10 @@
                     <span class="font-option-sample" style="font-family: 'Plus Jakarta Sans', sans-serif;">Plus Jakarta Sans</span>
                     <span class="font-option-meta">Editorial</span>
                   </div>
+                  <div class="font-option-item" data-value="Noto Sans Devanagari" role="option">
+                    <span class="font-option-sample" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</span>
+                    <span class="font-option-meta">Devanagari</span>
+                  </div>
                 </div>
               </div>
 
@@ -395,6 +467,7 @@
                 <option value="auto" style="font-family: inherit;">Auto (Random Font)</option>
                 <option value="Montserrat" style="font-family: 'Montserrat', sans-serif;">Montserrat</option>
                 <option value="Poppins" style="font-family: 'Poppins', sans-serif;">Poppins</option>
+                <option value="Noto Sans Devanagari" style="font-family: 'Noto Sans Devanagari', sans-serif;">Noto Sans Devanagari</option>
                 <option value="Manrope" style="font-family: 'Manrope', sans-serif;">Manrope</option>
                 <option value="Oswald" style="font-family: 'Oswald', sans-serif;">Oswald</option>
                 <option value="Space Grotesk" style="font-family: 'Space Grotesk', sans-serif;">Space Grotesk</option>
@@ -428,6 +501,42 @@
                 placeholder="150"
               >
               <div class="font-size-hint">Default 150px for 1080p canvas</div>
+            </div>
+
+            <!-- 6. Lyrics Glow & Shadow Depth -->
+            <div class="option-field lyrics-glow-field">
+              <div class="font-field-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="sliderLyricsGlowDepth" class="option-label">Lyrics Glow / Shadow Depth</label>
+                <span class="font-genre-tag" id="valLyricsGlowDepthBadge">2px</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+                <input
+                  type="range"
+                  id="sliderLyricsGlowDepth"
+                  class="tuning-range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value="2"
+                  style="flex: 1;"
+                >
+                <div class="tuning-val-wrap" style="flex-shrink: 0;">
+                  <input
+                    type="number"
+                    id="inputLyricsGlowDepth"
+                    class="tuning-number-input"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value="2"
+                  >
+                  <span class="tuning-unit">px</span>
+                </div>
+              </div>
+              <div class="tuning-hint-row" style="margin-top: 4px;">
+                <span>Default: 2px subtle shadow &amp; glow</span>
+                <button type="button" id="btnResetLyricsGlow" class="tuning-micro-btn">2px</button>
+              </div>
             </div>
           </div>
 
@@ -534,6 +643,29 @@
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+
+        <!-- Selected Song Production & Upload Action Bar -->
+        <div id="selectedSongActionBar" class="selected-song-action-bar" style="display: none;">
+          <div class="selected-song-info-group">
+            <img id="selectedSongImg" src="" alt="Album Art" class="selected-song-thumb">
+            <div class="selected-song-text">
+              <div class="selected-song-badge-row">
+                <span class="selected-song-tag">Selected Song</span>
+                <span id="selectedSongLyricsBadge" class="selected-song-lyrics-badge">Synced Lyrics Verified</span>
+              </div>
+              <div class="selected-song-name" id="selectedSongDisplayTitle">Song Title</div>
+              <div class="selected-song-artist" id="selectedSongDisplaySinger">Artist Name</div>
+              <div class="selected-song-note">
+                The exact Title &amp; Singer written in the Thumbnail Editor above will be rendered on the 1080p thumbnail and used for video &amp; YouTube metadata by default.
+              </div>
+            </div>
+          </div>
+          <div class="selected-song-action-btn-wrap">
+            <button type="button" id="btnUploadSelectedSong" class="btn-primary btn-upload-song">
+              Queue Video &amp; Upload
+            </button>
           </div>
         </div>
       </form>
@@ -744,8 +876,130 @@
       </div>
     </section>
 
+    <!-- Queue Item Edit Modal -->
+    <div id="queueEditModal" class="queue-modal-overlay" style="display: none;">
+      <div class="queue-modal-card">
+        <div class="queue-modal-header">
+          <div>
+            <h3 class="queue-modal-title">Edit Queued Song</h3>
+            <p class="queue-modal-subtitle">Modify parameters before this video starts encoding</p>
+          </div>
+          <button type="button" id="btnCloseQueueEditModal" class="btn-ghost-sm" aria-label="Close dialog">Close</button>
+        </div>
+
+        <form id="queueEditForm">
+          <input type="hidden" id="editJobId">
+          <div class="modal-form-grid">
+            <div class="modal-field full-width">
+              <label class="option-label" for="editSongTitle">Song Title (Thumbnail &amp; Video)</label>
+              <input type="text" id="editSongTitle" class="option-input" required>
+            </div>
+
+            <div class="modal-field full-width">
+              <label class="option-label" for="editSingerName">Singer Name (Thumbnail &amp; Video)</label>
+              <input type="text" id="editSingerName" class="option-input">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editTitleFont">Title Font</label>
+              <select id="editTitleFont" class="option-input">
+                <option value="Edo">Edo (Brush Default)</option>
+                <option value="Kalam">Kalam (Devanagari Brush)</option>
+                <option value="Poppins">Poppins (Devanagari Sans)</option>
+                <option value="Noto Sans Devanagari">Noto Sans Devanagari</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Cinzel">Cinzel</option>
+                <option value="Caveat">Caveat</option>
+                <option value="Oswald">Oswald</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="Outfit">Outfit</option>
+                <option value="Inter">Inter</option>
+                <option value="Raleway">Raleway</option>
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+              </select>
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editSingerFont">Singer Font</label>
+              <select id="editSingerFont" class="option-input">
+                <option value="Edo">Edo (Brush Default)</option>
+                <option value="Kalam">Kalam (Devanagari Brush)</option>
+                <option value="Poppins">Poppins (Devanagari Sans)</option>
+                <option value="Noto Sans Devanagari">Noto Sans Devanagari</option>
+                <option value="Outfit">Outfit</option>
+                <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+                <option value="Inter">Inter</option>
+                <option value="Playfair Display">Playfair Display</option>
+                <option value="Cinzel">Cinzel</option>
+                <option value="Montserrat">Montserrat</option>
+              </select>
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editSongFont">Song Lyrics Font</label>
+              <select id="editSongFont" class="option-input">
+                <option value="Edo">Edo (Brush Default)</option>
+                <option value="Kalam">Kalam (Devanagari Brush)</option>
+                <option value="Poppins">Poppins (Devanagari Sans)</option>
+                <option value="Noto Sans Devanagari">Noto Sans Devanagari</option>
+                <option value="Montserrat">Montserrat</option>
+                <option value="Manrope">Manrope</option>
+                <option value="Oswald">Oswald</option>
+                <option value="Space Grotesk">Space Grotesk</option>
+                <option value="Outfit">Outfit</option>
+                <option value="Inter">Inter</option>
+              </select>
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editBackground">Background Artwork</label>
+              <select id="editBackground" class="option-input">
+                <option value="auto">Auto (Keep Current)</option>
+              </select>
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editTitleFontSize">Title Font Size (px)</label>
+              <input type="number" id="editTitleFontSize" class="option-input" min="80" max="360" value="280">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editSingerFontSize">Singer Font Size (px)</label>
+              <input type="number" id="editSingerFontSize" class="option-input" min="40" max="220" value="132">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editThumbnailGap">Thumbnail Gap (px)</label>
+              <input type="number" id="editThumbnailGap" class="option-input" min="10" max="150" value="42">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editThumbnailGlowDepth">Thumbnail Glow / Shadow Depth (px)</label>
+              <input type="number" id="editThumbnailGlowDepth" class="option-input" min="0" max="20" value="2">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editLyricFontSize">Song Lyrics Size (px)</label>
+              <input type="number" id="editLyricFontSize" class="option-input" min="40" max="240" value="150">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editLyricsGlowDepth">Lyrics Glow &amp; Shadow Depth (px)</label>
+              <input type="number" id="editLyricsGlowDepth" class="option-input" min="0" max="20" value="2">
+            </div>
+          </div>
+
+          <div class="modal-footer-row">
+            <button type="button" id="btnCancelQueueEdit" class="btn-secondary">Cancel</button>
+            <button type="submit" id="btnSaveQueueEdit" class="btn-primary">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
+
   </main>
 
-  <script src="admin.js"></script>
+  <script src="admin.js?v=2.2"></script>
 </body>
 </html>
