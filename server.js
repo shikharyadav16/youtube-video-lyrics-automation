@@ -991,7 +991,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   if (!lines || !lines.length) return ass;
 
   const delayMs = Math.round(Number(lyricDelay || 0) * 1000);
-  const blurTag = effectiveBlur > 0 ? `\\blur${effectiveBlur}` : "";
 
   for (let i = 0; i < lines.length; i++) {
     const cur = lines[i];
@@ -1065,7 +1064,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }
 
     // Main line
-    ass += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,{${blurTag}${animTags}}${textClean}\n`;
+    ass += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,{${animTags}}${textClean}\n`;
 
     // If duo lines mode enabled, also show next line below in dimmed style
     if (linesMode === "duo" && next && next.text && String(next.text).trim()) {
@@ -1075,7 +1074,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         .replace(/\r?\n/g, " ")
         .trim();
       const upcomingAnim = `\\an5\\pos(960,630)\\fad(${fadeMs},${fadeMs})`;
-      ass += `Dialogue: 1,${startStr},${endStr},Upcoming,,0,0,0,,{${blurTag}${upcomingAnim}}${nextClean}\n`;
+      ass += `Dialogue: 1,${startStr},${endStr},Upcoming,,0,0,0,,{${upcomingAnim}}${nextClean}\n`;
     }
   }
 

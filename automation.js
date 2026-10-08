@@ -425,8 +425,6 @@ export async function generateThumbnail({
   const titleY = Math.round(blockTop + titleH / 2);
   const singerY = Math.round(blockTop + titleH + finalGap + artistH / 2);
 
-  const blurTag = finalBlur > 0 ? `\\blur${finalBlur}` : "";
-
   // ASS Style: White (&H00FFFFFF), outline spread (${finalSpread}), shadow depth = ${finalGlowDepth} (&H50000000), centered (\an5)
   const assContent = `[Script Info]
 ScriptType: v4.00+
@@ -440,8 +438,8 @@ ${singerInfo ? `Style: Singer,${finalSingerFont},${finalSingerSize},&H00FFFFFF,&
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 0,0:00:00.00,0:00:10.00,Title,,0,0,0,,{\\an5\\pos(960,${titleY})${blurTag}}${titleEscaped}
-${singerInfo ? `Dialogue: 0,0:00:00.00,0:00:10.00,Singer,,0,0,0,,{\\an5\\pos(960,${singerY})${blurTag}}${singerEscaped}` : ""}
+Dialogue: 0,0:00:00.00,0:00:10.00,Title,,0,0,0,,{\\an5\\pos(960,${titleY})}${titleEscaped}
+${singerInfo ? `Dialogue: 0,0:00:00.00,0:00:10.00,Singer,,0,0,0,,{\\an5\\pos(960,${singerY})}${singerEscaped}` : ""}
 `;
 
 
