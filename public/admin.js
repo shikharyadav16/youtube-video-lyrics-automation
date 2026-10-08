@@ -55,6 +55,14 @@ const dom = {
   inputLyricsGlowDepth: document.getElementById("inputLyricsGlowDepth"),
   valLyricsGlowDepthBadge: document.getElementById("valLyricsGlowDepthBadge"),
   btnResetLyricsGlow: document.getElementById("btnResetLyricsGlow"),
+  sliderLyricsBlur: document.getElementById("sliderLyricsBlur"),
+  inputLyricsBlur: document.getElementById("inputLyricsBlur"),
+  valLyricsBlurBadge: document.getElementById("valLyricsBlurBadge"),
+  btnResetLyricsBlur: document.getElementById("btnResetLyricsBlur"),
+  sliderLyricsSpread: document.getElementById("sliderLyricsSpread"),
+  inputLyricsSpread: document.getElementById("inputLyricsSpread"),
+  valLyricsSpreadBadge: document.getElementById("valLyricsSpreadBadge"),
+  btnResetLyricsSpread: document.getElementById("btnResetLyricsSpread"),
   
   responseBanner: document.getElementById("responseBanner"),
   
@@ -114,8 +122,12 @@ const dom = {
   editSingerFontSize: document.getElementById("editSingerFontSize"),
   editThumbnailGap: document.getElementById("editThumbnailGap"),
   editThumbnailGlowDepth: document.getElementById("editThumbnailGlowDepth"),
+  editThumbnailBlur: document.getElementById("editThumbnailBlur"),
+  editThumbnailSpread: document.getElementById("editThumbnailSpread"),
   editLyricFontSize: document.getElementById("editLyricFontSize"),
   editLyricsGlowDepth: document.getElementById("editLyricsGlowDepth"),
+  editLyricsBlur: document.getElementById("editLyricsBlur"),
+  editLyricsSpread: document.getElementById("editLyricsSpread"),
 
   failedSongsCard: document.getElementById("failedSongsCard"),
   failedCountBadge: document.getElementById("failedCountBadge"),
@@ -475,12 +487,18 @@ async function executeProcessSong(overridePayload = {}) {
       titleFont: dom.selectTitleFont ? dom.selectTitleFont.value : "auto",
       singerFont: dom.selectSingerFont ? dom.selectSingerFont.value : "auto",
       songFont: dom.selectSongFont ? dom.selectSongFont.value : "auto",
-      fontSize: dom.inputFontSize ? Number(dom.inputFontSize.value) || 150 : 150,
+      fontSize: dom.inputFontSize ? Math.min(170, Math.max(150, Number(dom.inputFontSize.value) || 150)) : 150,
       lyricsGlowDepth: dom.inputLyricsGlowDepth
         ? Number(dom.inputLyricsGlowDepth.value) || 2
         : 2,
+      lyricsBlur: dom.inputLyricsBlur
+        ? Number(dom.inputLyricsBlur.value) || 4
+        : 4,
+      lyricsSpread: dom.inputLyricsSpread
+        ? Number(dom.inputLyricsSpread.value) || 0
+        : 0,
       titleFontSize: document.getElementById("numTitleFontSize")
-        ? Number(document.getElementById("numTitleFontSize").value) || 280
+        ? Math.min(500, Math.max(80, Number(document.getElementById("numTitleFontSize").value) || 280))
         : 280,
       singerFontSize: document.getElementById("numSingerFontSize")
         ? Number(document.getElementById("numSingerFontSize").value) || 132
@@ -491,6 +509,12 @@ async function executeProcessSong(overridePayload = {}) {
       thumbnailGlowDepth: document.getElementById("numThumbGlowDepth")
         ? Number(document.getElementById("numThumbGlowDepth").value) || 2
         : 2,
+      thumbnailBlur: document.getElementById("numThumbBlur")
+        ? Number(document.getElementById("numThumbBlur").value) || 4
+        : 4,
+      thumbnailSpread: document.getElementById("numThumbSpread")
+        ? Number(document.getElementById("numThumbSpread").value) || 0
+        : 0,
       ...overridePayload,
     };
 
@@ -1054,12 +1078,16 @@ function openQueueEditModal(item) {
   if (dom.editTitleFont) dom.editTitleFont.value = item.chosenTitleFont || "Edo";
   if (dom.editSingerFont) dom.editSingerFont.value = item.chosenSingerFont || "Edo";
   if (dom.editSongFont) dom.editSongFont.value = item.fontFamily || "Edo";
-  if (dom.editTitleFontSize) dom.editTitleFontSize.value = item.titleFontSize || 280;
+  if (dom.editTitleFontSize) dom.editTitleFontSize.value = Math.min(500, item.titleFontSize || 280);
   if (dom.editSingerFontSize) dom.editSingerFontSize.value = item.singerFontSize || 132;
   if (dom.editThumbnailGap) dom.editThumbnailGap.value = item.thumbnailGap !== undefined ? item.thumbnailGap : 42;
   if (dom.editThumbnailGlowDepth) dom.editThumbnailGlowDepth.value = item.thumbnailGlowDepth !== undefined ? item.thumbnailGlowDepth : 2;
-  if (dom.editLyricFontSize) dom.editLyricFontSize.value = item.lyricFontSize || 150;
+  if (dom.editThumbnailBlur) dom.editThumbnailBlur.value = item.thumbnailBlur !== undefined ? item.thumbnailBlur : 4;
+  if (dom.editThumbnailSpread) dom.editThumbnailSpread.value = item.thumbnailSpread !== undefined ? item.thumbnailSpread : 0;
+  if (dom.editLyricFontSize) dom.editLyricFontSize.value = Math.min(170, Math.max(150, item.lyricFontSize || 150));
   if (dom.editLyricsGlowDepth) dom.editLyricsGlowDepth.value = item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 2;
+  if (dom.editLyricsBlur) dom.editLyricsBlur.value = item.lyricsBlur !== undefined ? item.lyricsBlur : 4;
+  if (dom.editLyricsSpread) dom.editLyricsSpread.value = item.lyricsSpread !== undefined ? item.lyricsSpread : 0;
 
   // Populate background options in modal if available
   if (dom.editBackground && window.__availableBackgrounds) {
@@ -1106,12 +1134,16 @@ if (dom.queueEditForm) {
       singerFont: dom.editSingerFont.value,
       songFont: dom.editSongFont.value,
       background: dom.editBackground.value,
-      titleFontSize: Number(dom.editTitleFontSize.value) || 280,
+      titleFontSize: Math.min(500, Math.max(80, Number(dom.editTitleFontSize.value) || 280)),
       singerFontSize: Number(dom.editSingerFontSize.value) || 132,
       thumbnailGap: Number(dom.editThumbnailGap.value) || 42,
       thumbnailGlowDepth: Number(dom.editThumbnailGlowDepth.value) || 2,
-      fontSize: dom.editLyricFontSize ? Number(dom.editLyricFontSize.value) || 150 : 150,
-      lyricsGlowDepth: dom.editLyricsGlowDepth ? Number(dom.editLyricsGlowDepth.value) || 2 : 2,
+      thumbnailBlur: Number(dom.editThumbnailBlur?.value) || 4,
+      thumbnailSpread: Number(dom.editThumbnailSpread?.value) || 0,
+      fontSize: Math.min(170, Math.max(150, Number(dom.editLyricFontSize.value) || 150)),
+      lyricsGlowDepth: Number(dom.editLyricsGlowDepth.value) || 2,
+      lyricsBlur: Number(dom.editLyricsBlur?.value) || 4,
+      lyricsSpread: Number(dom.editLyricsSpread?.value) || 0,
     };
 
     try {
@@ -1554,9 +1586,9 @@ function initThumbnailLiveComposer() {
       if (maxUnits * nominal > targetWidth) {
         size = Math.floor(targetWidth / Math.max(1, maxUnits));
       }
-      return Math.max(80, Math.min(360, size));
+      return Math.max(80, Math.min(500, size));
     }
-    return Math.max(80, Math.min(360, singleLineFit));
+    return Math.max(80, Math.min(500, singleLineFit));
   }
 
   function computeAutoSingerSize(singer) {
@@ -1614,10 +1646,12 @@ function initThumbnailLiveComposer() {
     let singerFontName = dom.selectSingerFont ? dom.selectSingerFont.value : "Edo";
     if (!singerFontName || singerFontName === "auto") singerFontName = "Edo";
 
-    const titleSize = Number(numTitleFontSize?.value) || 280;
+    const titleSize = Math.min(500, Math.max(80, Number(numTitleFontSize?.value) || 280));
     const singerSize = Number(numSingerFontSize?.value) || 132;
     const gap = Number(numThumbGap?.value) || 42;
     const glowDepth = Number(numThumbGlowDepth?.value !== undefined ? numThumbGlowDepth.value : 2);
+    const thumbBlur = Number(document.getElementById("numThumbBlur")?.value !== undefined ? document.getElementById("numThumbBlur").value : 4);
+    const thumbSpread = Number(document.getElementById("numThumbSpread")?.value !== undefined ? document.getElementById("numThumbSpread").value : 0);
 
     // 4. Compute Layout matching backend automation.js
     const titleLayout = computeTitleLines(titleRaw, 1728);
@@ -1631,17 +1665,35 @@ function initThumbnailLiveComposer() {
     const titleY = Math.round(blockTop + titleH / 2);
     const singerY = Math.round(blockTop + titleH + finalGap + artistH / 2);
 
-    // 5. Draw Title (Edo brush style, centered, white with 0 outline and 2px subtle glow & shadow)
+    // 5. Draw Title (Edo brush style, centered, white with spread, blur, and glow/shadow)
     ctx.save();
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+    ctx.font = `${titleSize}px "${titleFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
+
+    // Draw spread / outline if configured
+    if (thumbSpread > 0) {
+      ctx.lineWidth = thumbSpread * 2;
+      ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+      ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+      ctx.shadowBlur = thumbBlur;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = glowDepth;
+      if (isTwoLines) {
+        const halfSpacing = titleSize * 0.52;
+        ctx.strokeText(titleLayout.lines[0], 960, titleY - halfSpacing);
+        ctx.strokeText(titleLayout.lines[1], 960, titleY + halfSpacing);
+      } else {
+        ctx.strokeText(titleLayout.lines[0], 960, titleY);
+      }
+    }
+
+    // Draw main text with shadow blur & offset
     ctx.fillStyle = "#FFFFFF";
     ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-    ctx.shadowBlur = glowDepth;
+    ctx.shadowBlur = thumbBlur;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = glowDepth;
-    ctx.lineWidth = 0;
-    ctx.font = `${titleSize}px "${titleFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
 
     if (isTwoLines) {
       const halfSpacing = titleSize * 0.52;
@@ -1652,18 +1704,28 @@ function initThumbnailLiveComposer() {
     }
     ctx.restore();
 
-    // 6. Draw Singer (Centered, white with 0 outline and 2px subtle glow & shadow)
+    // 6. Draw Singer (Centered, white with spread, blur, and glow/shadow)
     if (singerRaw) {
       ctx.save();
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
+      ctx.font = `${singerSize}px "${singerFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
+
+      if (thumbSpread > 0) {
+        ctx.lineWidth = thumbSpread * 2;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.85)";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+        ctx.shadowBlur = thumbBlur;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = glowDepth;
+        ctx.strokeText(singerRaw, 960, singerY);
+      }
+
       ctx.fillStyle = "#FFFFFF";
       ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-      ctx.shadowBlur = glowDepth;
+      ctx.shadowBlur = thumbBlur;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = glowDepth;
-      ctx.lineWidth = 0;
-      ctx.font = `${singerSize}px "${singerFontName}", "Noto Sans Devanagari", "Kalam", "Poppins", "Edo", sans-serif`;
       ctx.fillText(singerRaw, 960, singerY);
       ctx.restore();
     }
@@ -1688,6 +1750,32 @@ function initThumbnailLiveComposer() {
   bindSync(sliderSingerFontSize, numSingerFontSize, renderThumbnailCanvas);
   bindSync(sliderThumbGap, numThumbGap, renderThumbnailCanvas);
   bindSync(sliderThumbGlowDepth, numThumbGlowDepth, renderThumbnailCanvas);
+
+  const sliderThumbBlur = document.getElementById("sliderThumbBlur");
+  const numThumbBlur = document.getElementById("numThumbBlur");
+  const btnResetThumbBlur = document.getElementById("btnResetThumbBlur");
+  bindSync(sliderThumbBlur, numThumbBlur, renderThumbnailCanvas);
+
+  const sliderThumbSpread = document.getElementById("sliderThumbSpread");
+  const numThumbSpread = document.getElementById("numThumbSpread");
+  const btnResetThumbSpread = document.getElementById("btnResetThumbSpread");
+  bindSync(sliderThumbSpread, numThumbSpread, renderThumbnailCanvas);
+
+  if (btnResetThumbBlur) {
+    btnResetThumbBlur.addEventListener("click", () => {
+      if (sliderThumbBlur) sliderThumbBlur.value = 4;
+      if (numThumbBlur) numThumbBlur.value = 4;
+      renderThumbnailCanvas();
+    });
+  }
+
+  if (btnResetThumbSpread) {
+    btnResetThumbSpread.addEventListener("click", () => {
+      if (sliderThumbSpread) sliderThumbSpread.value = 0;
+      if (numThumbSpread) numThumbSpread.value = 0;
+      renderThumbnailCanvas();
+    });
+  }
 
   // Auto-fit Buttons
   if (btnAutoTitleSize) {
@@ -1957,18 +2045,36 @@ function setupCustomFontDropdowns() {
 // Lyrics Glow & Shadow Controls & Live Preview
 function initLyricsControls() {
   function updateLyricsPreviewStyle() {
-    const depth = dom.inputLyricsGlowDepth ? Number(dom.inputLyricsGlowDepth.value) || 0 : 2;
-    if (dom.valLyricsGlowDepthBadge) {
-      dom.valLyricsGlowDepthBadge.textContent = `${depth}px`;
+    // Clamp lyrics size between 150 and 170
+    if (dom.inputFontSize) {
+      const currentSize = Number(dom.inputFontSize.value) || 150;
+      const clampedSize = Math.min(170, Math.max(150, currentSize));
+      if (dom.inputFontSize.value !== String(clampedSize) && !dom.inputFontSize.matches(":focus")) {
+        dom.inputFontSize.value = clampedSize;
+      }
     }
+
+    const depth = dom.inputLyricsGlowDepth ? Number(dom.inputLyricsGlowDepth.value) || 0 : 2;
+    const blur = dom.inputLyricsBlur ? Number(dom.inputLyricsBlur.value) || 0 : 4;
+    const spread = dom.inputLyricsSpread ? Number(dom.inputLyricsSpread.value) || 0 : 0;
+
+    if (dom.valLyricsGlowDepthBadge) dom.valLyricsGlowDepthBadge.textContent = `${depth}px`;
+    if (dom.valLyricsBlurBadge) dom.valLyricsBlurBadge.textContent = `${blur}px`;
+    if (dom.valLyricsSpreadBadge) dom.valLyricsSpreadBadge.textContent = `${spread}px`;
+
     const previewSongFont = document.getElementById("previewSongFont");
     if (previewSongFont) {
-      previewSongFont.style.textShadow = depth > 0
-        ? `0 0 ${depth * 2}px rgba(0,0,0,0.85), 0 ${depth}px ${depth * 1.5}px rgba(0,0,0,0.9)`
-        : "none";
+      const shadowParts = [];
+      if (depth > 0 || blur > 0) {
+        shadowParts.push(`0 ${depth}px ${blur}px rgba(0,0,0,0.9)`);
+        shadowParts.push(`0 0 ${blur}px rgba(0,0,0,0.8)`);
+      }
+      previewSongFont.style.textShadow = shadowParts.length ? shadowParts.join(", ") : "none";
+      previewSongFont.style.webkitTextStroke = spread > 0 ? `${spread}px rgba(0,0,0,0.85)` : "0px transparent";
     }
   }
 
+  // 1. Sync Lyrics Glow Depth
   if (dom.sliderLyricsGlowDepth && dom.inputLyricsGlowDepth) {
     dom.sliderLyricsGlowDepth.addEventListener("input", () => {
       dom.inputLyricsGlowDepth.value = dom.sliderLyricsGlowDepth.value;
@@ -1979,11 +2085,57 @@ function initLyricsControls() {
       updateLyricsPreviewStyle();
     });
   }
-
   if (dom.btnResetLyricsGlow) {
     dom.btnResetLyricsGlow.addEventListener("click", () => {
       if (dom.sliderLyricsGlowDepth) dom.sliderLyricsGlowDepth.value = 2;
       if (dom.inputLyricsGlowDepth) dom.inputLyricsGlowDepth.value = 2;
+      updateLyricsPreviewStyle();
+    });
+  }
+
+  // 2. Sync Lyrics Blur
+  if (dom.sliderLyricsBlur && dom.inputLyricsBlur) {
+    dom.sliderLyricsBlur.addEventListener("input", () => {
+      dom.inputLyricsBlur.value = dom.sliderLyricsBlur.value;
+      updateLyricsPreviewStyle();
+    });
+    dom.inputLyricsBlur.addEventListener("input", () => {
+      dom.sliderLyricsBlur.value = dom.inputLyricsBlur.value;
+      updateLyricsPreviewStyle();
+    });
+  }
+  if (dom.btnResetLyricsBlur) {
+    dom.btnResetLyricsBlur.addEventListener("click", () => {
+      if (dom.sliderLyricsBlur) dom.sliderLyricsBlur.value = 4;
+      if (dom.inputLyricsBlur) dom.inputLyricsBlur.value = 4;
+      updateLyricsPreviewStyle();
+    });
+  }
+
+  // 3. Sync Lyrics Spread
+  if (dom.sliderLyricsSpread && dom.inputLyricsSpread) {
+    dom.sliderLyricsSpread.addEventListener("input", () => {
+      dom.inputLyricsSpread.value = dom.sliderLyricsSpread.value;
+      updateLyricsPreviewStyle();
+    });
+    dom.inputLyricsSpread.addEventListener("input", () => {
+      dom.sliderLyricsSpread.value = dom.inputLyricsSpread.value;
+      updateLyricsPreviewStyle();
+    });
+  }
+  if (dom.btnResetLyricsSpread) {
+    dom.btnResetLyricsSpread.addEventListener("click", () => {
+      if (dom.sliderLyricsSpread) dom.sliderLyricsSpread.value = 0;
+      if (dom.inputLyricsSpread) dom.inputLyricsSpread.value = 0;
+      updateLyricsPreviewStyle();
+    });
+  }
+
+  // 4. Lyrics Font Size (150 - 170px)
+  if (dom.inputFontSize) {
+    dom.inputFontSize.addEventListener("change", () => {
+      const val = Number(dom.inputFontSize.value) || 150;
+      dom.inputFontSize.value = Math.min(170, Math.max(150, val));
       updateLyricsPreviewStyle();
     });
   }

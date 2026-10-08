@@ -931,6 +931,8 @@ function generateAssSubtitles({
   outlineWidth = 0,
   shadowColor = "#000000",
   shadowDepth = 2,
+  shadowBlur = 4,
+  shadowSpread = 0,
   animation = "pop",
   songDurationMs = 180000,
   linesMode = "single", // "single" or "duo"
@@ -949,15 +951,24 @@ function generateAssSubtitles({
   const assShadow = hexToAssColor(shadowColor, 0.4);
   const isBold = fontWeight === "Bold" || Number(fontWeight) >= 700 ? 1 : 0;
 
-  // Outline width = 0 and shadow/glow depth = 2px per specifications
+  // Clamped fontSize between 150 and 170
+  const finalFontSize = Math.min(170, Math.max(150, Number(fontSize) || 150));
+
+  // Outline width = shadowSpread if specified, else outlineWidth
   const effectiveOutline =
-    outlineWidth !== undefined && !isNaN(Number(outlineWidth))
-      ? Math.max(0, Number(outlineWidth))
-      : 0;
+    shadowSpread !== undefined && !isNaN(Number(shadowSpread)) && Number(shadowSpread) > 0
+      ? Number(shadowSpread)
+      : (outlineWidth !== undefined && !isNaN(Number(outlineWidth))
+        ? Math.max(0, Number(outlineWidth))
+        : 0);
   const effectiveShadow =
     shadowDepth !== undefined && !isNaN(Number(shadowDepth))
       ? Math.max(0, Number(shadowDepth))
       : 2;
+  const effectiveBlur =
+    shadowBlur !== undefined && !isNaN(Number(shadowBlur))
+      ? Math.max(0, Math.min(30, Number(shadowBlur)))
+      : 4;
 
   let ass = `[Script Info]
 Title: Spark Style Lyric Video
@@ -970,8 +981,8 @@ PlayResY: 1080
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${assFont},${fontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
-Style: Upcoming,${assFont},${Math.round(fontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
+Style: Default,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
+Style: Upcoming,${assFont},${Math.round(finalFontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -980,6 +991,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   if (!lines || !lines.length) return ass;
 
   const delayMs = Math.round(Number(lyricDelay || 0) * 1000);
+  const blurTag = effectiveBlur > 0 ? `\\blur${effectiveBlur}` : "";
 
   for (let i = 0; i < lines.length; i++) {
     const cur = lines[i];
@@ -1053,7 +1065,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     }
 
     // Main line
-    ass += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,{${animTags}}${textClean}\n`;
+    ass += `Dialogue: 0,${startStr},${endStr},Default,,0,0,0,,{${blurTag}${animTags}}${textClean}\n`;
 
     // If duo lines mode enabled, also show next line below in dimmed style
     if (linesMode === "duo" && next && next.text && String(next.text).trim()) {
@@ -1063,7 +1075,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         .replace(/\r?\n/g, " ")
         .trim();
       const upcomingAnim = `\\an5\\pos(960,630)\\fad(${fadeMs},${fadeMs})`;
-      ass += `Dialogue: 1,${startStr},${endStr},Upcoming,,0,0,0,,{${upcomingAnim}}${nextClean}\n`;
+      ass += `Dialogue: 1,${startStr},${endStr},Upcoming,,0,0,0,,{${blurTag}${upcomingAnim}}${nextClean}\n`;
     }
   }
 
@@ -1283,19 +1295,29 @@ async function executeRenderPipeline(
   const assContent = generateAssSubtitles({
     lines,
     fontFamily: options.fontFamily || "Edo",
-    fontSize: Number(options.fontSize) || 125,
+    fontSize: Math.min(170, Math.max(150, Number(options.fontSize) || 150)),
     fontWeight: options.fontWeight || "Bold",
     primaryColor: options.fontColor || "#FFFFFF",
     outlineColor: options.outlineColor || "#000000",
     outlineWidth:
-      options.outlineWidth !== undefined && !isNaN(Number(options.outlineWidth))
-        ? Number(options.outlineWidth)
-        : 0,
+      options.shadowSpread !== undefined && !isNaN(Number(options.shadowSpread))
+        ? Number(options.shadowSpread)
+        : (options.outlineWidth !== undefined && !isNaN(Number(options.outlineWidth))
+          ? Number(options.outlineWidth)
+          : 0),
     shadowColor: options.shadowColor || "#000000",
     shadowDepth:
       options.shadowDepth !== undefined && !isNaN(Number(options.shadowDepth))
         ? Number(options.shadowDepth)
         : 2,
+    shadowBlur:
+      options.shadowBlur !== undefined && !isNaN(Number(options.shadowBlur))
+        ? Number(options.shadowBlur)
+        : 4,
+    shadowSpread:
+      options.shadowSpread !== undefined && !isNaN(Number(options.shadowSpread))
+        ? Number(options.shadowSpread)
+        : 0,
     animation: animationKey,
     linesMode: options.linesMode || "single",
     songDurationMs: songDurationSec * 1000,
@@ -1604,8 +1626,12 @@ function getQueueSnapshot() {
       singerFontSize: j.singerFontSize || 132,
       thumbnailGap: j.thumbnailGap !== undefined ? j.thumbnailGap : 42,
       thumbnailGlowDepth: j.thumbnailGlowDepth !== undefined ? j.thumbnailGlowDepth : 2,
+      thumbnailBlur: j.thumbnailBlur !== undefined ? j.thumbnailBlur : 4,
+      thumbnailSpread: j.thumbnailSpread !== undefined ? j.thumbnailSpread : 0,
       lyricsGlowDepth: j.lyricsGlowDepth !== undefined ? j.lyricsGlowDepth : 2,
-      lyricFontSize: j.lyricFontSize || 150,
+      lyricsBlur: j.lyricsBlur !== undefined ? j.lyricsBlur : 4,
+      lyricsSpread: j.lyricsSpread !== undefined ? j.lyricsSpread : 0,
+      lyricFontSize: Math.min(170, Math.max(150, Number(j.lyricFontSize) || 150)),
       createdAt: j.createdAt,
     })),
     queueLength: automationQueue.waitingQueue.length,
@@ -1627,10 +1653,12 @@ async function runAutomationPipelineForJob(job) {
     singerName: job.singer,
     titleFont: job.chosenTitleFont,
     singerFont: job.chosenSingerFont,
-    titleFontSize: job.titleFontSize || 280,
+    titleFontSize: job.titleFontSize ? Math.min(500, Math.max(80, Number(job.titleFontSize))) : 280,
     singerFontSize: job.singerFontSize || 132,
     gap: job.thumbnailGap || 42,
     glowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 2,
+    blur: job.thumbnailBlur !== undefined ? Number(job.thumbnailBlur) : 4,
+    spread: job.thumbnailSpread !== undefined ? Number(job.thumbnailSpread) : 0,
     outPath: thumbPath,
     ffmpegExe,
   });
@@ -1652,13 +1680,15 @@ async function runAutomationPipelineForJob(job) {
     background: job.bgFilename,
     lines: job.lyricsLines,
     options: {
-      fontSize: job.lyricFontSize || 150,
+      fontSize: Math.min(170, Math.max(150, Number(job.lyricFontSize) || 150)),
       lyricDelay: -0.3,
       fps: 60,
       bgDarkness: 0,
       bgBlur: 0,
-      outlineWidth: 0,
+      outlineWidth: job.lyricsSpread !== undefined && !isNaN(Number(job.lyricsSpread)) ? Number(job.lyricsSpread) : 0,
       shadowDepth: job.lyricsGlowDepth !== undefined && !isNaN(Number(job.lyricsGlowDepth)) ? Number(job.lyricsGlowDepth) : 2,
+      shadowBlur: job.lyricsBlur !== undefined && !isNaN(Number(job.lyricsBlur)) ? Number(job.lyricsBlur) : 4,
+      shadowSpread: job.lyricsSpread !== undefined && !isNaN(Number(job.lyricsSpread)) ? Number(job.lyricsSpread) : 0,
       fontFamily: job.fontFamily,
       animation: job.animation,
       bgMotion: "zoom",
@@ -1758,9 +1788,17 @@ async function runAutomationPipelineForJob(job) {
           youtubeUploaded: Boolean(ytResult?.uploaded),
           youtubeError: ytResult?.uploaded ? null : (job.youtubeError || null),
           localCleaned: Boolean(ytResult?.uploaded),
+          titleFontSize: job.titleFontSize || 280,
+          singerFontSize: job.singerFontSize || 132,
+          thumbnailGap: job.thumbnailGap !== undefined ? job.thumbnailGap : 42,
+          thumbnailGlowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 2,
+          thumbnailBlur: job.thumbnailBlur !== undefined ? job.thumbnailBlur : 4,
+          thumbnailSpread: job.thumbnailSpread !== undefined ? job.thumbnailSpread : 0,
           lyricsCount: job.lyricsLines.length,
-          lyricsFontSize: job.lyricFontSize || 150,
+          lyricsFontSize: Math.min(170, Math.max(150, Number(job.lyricFontSize) || 150)),
           lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 2,
+          lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 4,
+          lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
           createdAt: new Date(),
         };
 
@@ -1974,6 +2012,10 @@ app.post("/api/admin/process-song", async (req, res) => {
     thumbnailGap,
     thumbnailGlowDepth,
     lyricsGlowDepth,
+    thumbnailBlur,
+    thumbnailSpread,
+    lyricsBlur,
+    lyricsSpread,
   } = req.body;
 
   if (!inputSongId && (!query || !query.trim())) {
@@ -2114,7 +2156,7 @@ app.post("/api/admin/process-song", async (req, res) => {
         ? singerFont
         : "Edo";
 
-    const lyricFontSize = Number(fontSize) || 150;
+    const lyricFontSize = Math.min(170, Math.max(150, Number(fontSize) || 150));
     const animation = getRandomElement(AUTOMATION_ANIMATIONS);
 
     const jobId = `auto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
@@ -2133,11 +2175,15 @@ app.post("/api/admin/process-song", async (req, res) => {
       chosenTitleFont,
       chosenSingerFont,
       lyricFontSize,
-      titleFontSize: titleFontSize && !isNaN(Number(titleFontSize)) ? Number(titleFontSize) : 280,
+      titleFontSize: titleFontSize && !isNaN(Number(titleFontSize)) ? Math.max(40, Math.min(500, Number(titleFontSize))) : 280,
       singerFontSize: singerFontSize && !isNaN(Number(singerFontSize)) ? Number(singerFontSize) : 132,
       thumbnailGap: thumbnailGap !== undefined && thumbnailGap !== null && !isNaN(Number(thumbnailGap)) ? Number(thumbnailGap) : 42,
       thumbnailGlowDepth: thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth)) ? Number(thumbnailGlowDepth) : 2,
+      thumbnailBlur: thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur)) ? Math.max(0, Math.min(30, Number(thumbnailBlur))) : 4,
+      thumbnailSpread: thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread)) ? Math.max(0, Math.min(20, Number(thumbnailSpread))) : 0,
       lyricsGlowDepth: lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth)) ? Number(lyricsGlowDepth) : 2,
+      lyricsBlur: lyricsBlur !== undefined && !isNaN(Number(lyricsBlur)) ? Math.max(0, Math.min(30, Number(lyricsBlur))) : 4,
+      lyricsSpread: lyricsSpread !== undefined && !isNaN(Number(lyricsSpread)) ? Math.max(0, Math.min(20, Number(lyricsSpread))) : 0,
       animation,
       lyricsLines: lyricsData.lines,
       status: isBusy ? "queued" : "preparing",
@@ -2272,7 +2318,11 @@ app.put("/api/admin/queue/:id", (req, res) => {
     singerFontSize,
     thumbnailGap,
     thumbnailGlowDepth,
+    thumbnailBlur,
+    thumbnailSpread,
     lyricsGlowDepth,
+    lyricsBlur,
+    lyricsSpread,
     fontSize,
   } = req.body;
 
@@ -2282,12 +2332,16 @@ app.put("/api/admin/queue/:id", (req, res) => {
   if (titleFont) job.chosenTitleFont = titleFont;
   if (singerFont) job.chosenSingerFont = singerFont;
   if (songFont) job.fontFamily = songFont;
-  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Number(titleFontSize);
+  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Math.max(40, Math.min(500, Number(titleFontSize)));
   if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
   if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
   if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
+  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(30, Number(thumbnailBlur)));
+  if (thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread))) job.thumbnailSpread = Math.max(0, Math.min(20, Number(thumbnailSpread)));
   if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
-  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Number(fontSize);
+  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(30, Number(lyricsBlur)));
+  if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
+  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
 
   console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
 
@@ -2306,7 +2360,11 @@ app.put("/api/admin/queue/:id", (req, res) => {
       singerFontSize: job.singerFontSize,
       thumbnailGap: job.thumbnailGap,
       thumbnailGlowDepth: job.thumbnailGlowDepth,
+      thumbnailBlur: job.thumbnailBlur,
+      thumbnailSpread: job.thumbnailSpread,
       lyricsGlowDepth: job.lyricsGlowDepth,
+      lyricsBlur: job.lyricsBlur,
+      lyricsSpread: job.lyricsSpread,
       lyricFontSize: job.lyricFontSize,
     },
     queue: getQueueSnapshot(),
@@ -2338,7 +2396,11 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
     singerFontSize,
     thumbnailGap,
     thumbnailGlowDepth,
+    thumbnailBlur,
+    thumbnailSpread,
     lyricsGlowDepth,
+    lyricsBlur,
+    lyricsSpread,
     fontSize,
   } = req.body;
 
@@ -2348,12 +2410,16 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
   if (titleFont) job.chosenTitleFont = titleFont;
   if (singerFont) job.chosenSingerFont = singerFont;
   if (songFont) job.fontFamily = songFont;
-  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Number(titleFontSize);
+  if (titleFontSize && !isNaN(Number(titleFontSize))) job.titleFontSize = Math.max(40, Math.min(500, Number(titleFontSize)));
   if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
   if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
   if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
+  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(30, Number(thumbnailBlur)));
+  if (thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread))) job.thumbnailSpread = Math.max(0, Math.min(20, Number(thumbnailSpread)));
   if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
-  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Number(fontSize);
+  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(30, Number(lyricsBlur)));
+  if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
+  if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
 
   console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
 
@@ -2372,7 +2438,11 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
       singerFontSize: job.singerFontSize,
       thumbnailGap: job.thumbnailGap,
       thumbnailGlowDepth: job.thumbnailGlowDepth,
+      thumbnailBlur: job.thumbnailBlur,
+      thumbnailSpread: job.thumbnailSpread,
       lyricsGlowDepth: job.lyricsGlowDepth,
+      lyricsBlur: job.lyricsBlur,
+      lyricsSpread: job.lyricsSpread,
       lyricFontSize: job.lyricFontSize,
     },
     queue: getQueueSnapshot(),

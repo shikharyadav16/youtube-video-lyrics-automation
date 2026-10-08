@@ -487,20 +487,20 @@
               </div>
             </div>
 
-            <!-- 5. Default Size of Song Lyrics (150px) -->
+            <!-- 5. Default Size of Song Lyrics (150px - 170px) -->
             <div class="option-field font-size-field">
               <label for="inputFontSize" class="option-label">Song Lyrics Size (px)</label>
               <input
                 type="number"
                 id="inputFontSize"
                 class="option-input"
-                min="40"
-                max="240"
-                step="5"
+                min="150"
+                max="170"
+                step="1"
                 value="150"
                 placeholder="150"
               >
-              <div class="font-size-hint">Default 150px for 1080p canvas</div>
+              <div class="font-size-hint">Allowed: 150px &ndash; 170px (default 150px)</div>
             </div>
 
             <!-- 6. Lyrics Glow & Shadow Depth -->
@@ -538,6 +538,78 @@
                 <button type="button" id="btnResetLyricsGlow" class="tuning-micro-btn">2px</button>
               </div>
             </div>
+
+            <!-- 7. Lyrics Shadow Blur / Softness -->
+            <div class="option-field lyrics-blur-field">
+              <div class="font-field-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="sliderLyricsBlur" class="option-label">Lyrics Blur / Softness</label>
+                <span class="font-genre-tag" id="valLyricsBlurBadge">4px</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+                <input
+                  type="range"
+                  id="sliderLyricsBlur"
+                  class="tuning-range"
+                  min="0"
+                  max="30"
+                  step="1"
+                  value="4"
+                  style="flex: 1;"
+                >
+                <div class="tuning-val-wrap" style="flex-shrink: 0;">
+                  <input
+                    type="number"
+                    id="inputLyricsBlur"
+                    class="tuning-number-input"
+                    min="0"
+                    max="30"
+                    step="1"
+                    value="4"
+                  >
+                  <span class="tuning-unit">px</span>
+                </div>
+              </div>
+              <div class="tuning-hint-row" style="margin-top: 4px;">
+                <span>Shadow edge softness (0&ndash;30px)</span>
+                <button type="button" id="btnResetLyricsBlur" class="tuning-micro-btn">4px</button>
+              </div>
+            </div>
+
+            <!-- 8. Lyrics Shadow Spread -->
+            <div class="option-field lyrics-spread-field">
+              <div class="font-field-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <label for="sliderLyricsSpread" class="option-label">Lyrics Shadow Spread</label>
+                <span class="font-genre-tag" id="valLyricsSpreadBadge">0px</span>
+              </div>
+              <div style="display: flex; gap: 8px; align-items: center; margin-top: 2px;">
+                <input
+                  type="range"
+                  id="sliderLyricsSpread"
+                  class="tuning-range"
+                  min="0"
+                  max="20"
+                  step="1"
+                  value="0"
+                  style="flex: 1;"
+                >
+                <div class="tuning-val-wrap" style="flex-shrink: 0;">
+                  <input
+                    type="number"
+                    id="inputLyricsSpread"
+                    class="tuning-number-input"
+                    min="0"
+                    max="20"
+                    step="1"
+                    value="0"
+                  >
+                  <span class="tuning-unit">px</span>
+                </div>
+              </div>
+              <div class="tuning-hint-row" style="margin-top: 4px;">
+                <span>Shadow expansion around text (0&ndash;20px)</span>
+                <button type="button" id="btnResetLyricsSpread" class="tuning-micro-btn">0px</button>
+              </div>
+            </div>
           </div>
 
           <!-- 6. Live Thumbnail Verification & Fine-Tuning Section -->
@@ -571,13 +643,13 @@
                   <div class="tuning-label-row">
                     <label for="sliderTitleFontSize" class="tuning-label">Title Font Size</label>
                     <div class="tuning-val-wrap">
-                      <input type="number" id="numTitleFontSize" class="tuning-number-input" min="80" max="360" value="280">
+                      <input type="number" id="numTitleFontSize" class="tuning-number-input" min="80" max="500" value="280">
                       <span class="tuning-unit">px</span>
                     </div>
                   </div>
-                  <input type="range" id="sliderTitleFontSize" class="tuning-range" min="80" max="360" step="2" value="280">
+                  <input type="range" id="sliderTitleFontSize" class="tuning-range" min="80" max="500" step="2" value="280">
                   <div class="tuning-hint-row">
-                    <span>Target: 280px default (1&ndash;2 lines max)</span>
+                    <span>Target: 280px default (80px &ndash; 500px max)</span>
                     <button type="button" id="btnAutoTitleSize" class="tuning-micro-btn">Auto-Fit</button>
                   </div>
                 </div>
@@ -619,14 +691,46 @@
                   <div class="tuning-label-row">
                     <label for="sliderThumbGlowDepth" class="tuning-label">Glow / Shadow Depth</label>
                     <div class="tuning-val-wrap">
-                      <input type="number" id="numThumbGlowDepth" class="tuning-number-input" min="0" max="20" value="2">
+                      <input type="number" id="numThumbGlowDepth" class="tuning-number-input" min="0" max="30" value="2">
                       <span class="tuning-unit">px</span>
                     </div>
                   </div>
-                  <input type="range" id="sliderThumbGlowDepth" class="tuning-range" min="0" max="20" step="1" value="2">
+                  <input type="range" id="sliderThumbGlowDepth" class="tuning-range" min="0" max="30" step="1" value="2">
                   <div class="tuning-hint-row">
-                    <span>Default: 2px subtle glow &amp; shadow (0px outline)</span>
+                    <span>Shadow offset distance (0&ndash;30px)</span>
                     <button type="button" id="btnResetGlowDepth" class="tuning-micro-btn">2px</button>
+                  </div>
+                </div>
+
+                <!-- Blur / Softness Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderThumbBlur" class="tuning-label">Blur / Softness</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numThumbBlur" class="tuning-number-input" min="0" max="30" value="4">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderThumbBlur" class="tuning-range" min="0" max="30" step="1" value="4">
+                  <div class="tuning-hint-row">
+                    <span>How spread/soft shadow edges are</span>
+                    <button type="button" id="btnResetThumbBlur" class="tuning-micro-btn">4px</button>
+                  </div>
+                </div>
+
+                <!-- Spread Control -->
+                <div class="tuning-control-item">
+                  <div class="tuning-label-row">
+                    <label for="sliderThumbSpread" class="tuning-label">Spread</label>
+                    <div class="tuning-val-wrap">
+                      <input type="number" id="numThumbSpread" class="tuning-number-input" min="0" max="20" value="0">
+                      <span class="tuning-unit">px</span>
+                    </div>
+                  </div>
+                  <input type="range" id="sliderThumbSpread" class="tuning-range" min="0" max="20" step="1" value="0">
+                  <div class="tuning-hint-row">
+                    <span>How much shadow expands around text</span>
+                    <button type="button" id="btnResetThumbSpread" class="tuning-micro-btn">0px</button>
                   </div>
                 </div>
 
@@ -961,7 +1065,7 @@
 
             <div class="modal-field">
               <label class="option-label" for="editTitleFontSize">Title Font Size (px)</label>
-              <input type="number" id="editTitleFontSize" class="option-input" min="80" max="360" value="280">
+              <input type="number" id="editTitleFontSize" class="option-input" min="80" max="500" value="280">
             </div>
 
             <div class="modal-field">
@@ -975,18 +1079,38 @@
             </div>
 
             <div class="modal-field">
-              <label class="option-label" for="editThumbnailGlowDepth">Thumbnail Glow / Shadow Depth (px)</label>
-              <input type="number" id="editThumbnailGlowDepth" class="option-input" min="0" max="20" value="2">
+              <label class="option-label" for="editThumbnailGlowDepth">Thumbnail Shadow Depth (px)</label>
+              <input type="number" id="editThumbnailGlowDepth" class="option-input" min="0" max="30" value="2">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editThumbnailBlur">Thumbnail Shadow Blur / Softness (px)</label>
+              <input type="number" id="editThumbnailBlur" class="option-input" min="0" max="30" value="4">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editThumbnailSpread">Thumbnail Shadow Spread (px)</label>
+              <input type="number" id="editThumbnailSpread" class="option-input" min="0" max="20" value="0">
             </div>
 
             <div class="modal-field">
               <label class="option-label" for="editLyricFontSize">Song Lyrics Size (px)</label>
-              <input type="number" id="editLyricFontSize" class="option-input" min="40" max="240" value="150">
+              <input type="number" id="editLyricFontSize" class="option-input" min="150" max="170" value="150">
             </div>
 
             <div class="modal-field">
-              <label class="option-label" for="editLyricsGlowDepth">Lyrics Glow &amp; Shadow Depth (px)</label>
-              <input type="number" id="editLyricsGlowDepth" class="option-input" min="0" max="20" value="2">
+              <label class="option-label" for="editLyricsGlowDepth">Lyrics Shadow Depth (px)</label>
+              <input type="number" id="editLyricsGlowDepth" class="option-input" min="0" max="30" value="2">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editLyricsBlur">Lyrics Shadow Blur / Softness (px)</label>
+              <input type="number" id="editLyricsBlur" class="option-input" min="0" max="30" value="4">
+            </div>
+
+            <div class="modal-field">
+              <label class="option-label" for="editLyricsSpread">Lyrics Shadow Spread (px)</label>
+              <input type="number" id="editLyricsSpread" class="option-input" min="0" max="20" value="0">
             </div>
           </div>
 
