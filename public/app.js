@@ -24,6 +24,8 @@ const state = {
   outlineColor: "#000000",
   outlineWidth: 0,
   shadowDepth: 2,
+  shadowBlur: 4,
+  shadowSpread: 0,
   shadowColor: "#000000",
   animation: "pop", // "pop", "slide", "fade", "bounce", etc.
   linesMode: "single", // "single", "duo"
@@ -116,6 +118,13 @@ const dom = {
   valOutlineWidth: document.getElementById("valOutlineWidth"),
   sliderShadowDepth: document.getElementById("sliderShadowDepth"),
   valShadowDepth: document.getElementById("valShadowDepth"),
+  btnResetShadowDepth: document.getElementById("btnResetShadowDepth"),
+  sliderShadowBlur: document.getElementById("sliderShadowBlur"),
+  valShadowBlur: document.getElementById("valShadowBlur"),
+  btnResetShadowBlur: document.getElementById("btnResetShadowBlur"),
+  sliderShadowSpread: document.getElementById("sliderShadowSpread"),
+  valShadowSpread: document.getElementById("valShadowSpread"),
+  btnResetShadowSpread: document.getElementById("btnResetShadowSpread"),
   sliderLyricDelay: document.getElementById("sliderLyricDelay"),
   valLyricDelay: document.getElementById("valLyricDelay"),
   btnResetDelay: document.getElementById("btnResetDelay"),
@@ -658,8 +667,11 @@ function applyVisualStyles() {
   dom.stageLyricText.style.fontFamily = `'${state.fontFamily}', sans-serif`;
   dom.stageLyricText.style.fontWeight = state.fontWeight;
   dom.stageLyricText.style.color = state.textColor;
-  dom.stageLyricText.style.webkitTextStroke = state.outlineWidth > 0
-    ? `${state.outlineWidth}px ${state.outlineColor}`
+
+  const effectiveStrokeWidth = state.shadowSpread > 0 ? state.shadowSpread : state.outlineWidth;
+  const effectiveStrokeColor = state.shadowSpread > 0 && state.outlineWidth === 0 ? "rgba(0,0,0,0.85)" : state.outlineColor;
+  dom.stageLyricText.style.webkitTextStroke = effectiveStrokeWidth > 0
+    ? `${effectiveStrokeWidth}px ${effectiveStrokeColor}`
     : "0px transparent";
 
   // Proportional font-size on canvas
@@ -669,9 +681,9 @@ function applyVisualStyles() {
   const scaledSize = Math.round((state.fontSize / 1920) * canvasWidth);
   dom.stageLyricText.style.fontSize = `${scaledSize}px`;
 
-  // Shadow & Glow
-  if (state.shadowDepth > 0) {
-    dom.stageLyricText.style.textShadow = `0 0 ${state.shadowDepth * 3}px rgba(0,0,0,0.9), 0 ${state.shadowDepth}px ${state.shadowDepth * 2}px ${state.shadowColor}`;
+  // Shadow & Glow (Depth + Blur/Softness)
+  if (state.shadowDepth > 0 || state.shadowBlur > 0) {
+    dom.stageLyricText.style.textShadow = `0 ${state.shadowDepth}px ${state.shadowBlur}px rgba(0,0,0,0.9)`;
   } else {
     dom.stageLyricText.style.textShadow = "none";
   }
@@ -679,9 +691,14 @@ function applyVisualStyles() {
   // Duo Line font size & stroke
   dom.stageLyricUpcomingText.style.fontFamily = `'${state.fontFamily}', sans-serif`;
   dom.stageLyricUpcomingText.style.fontSize = `${Math.round(scaledSize * 0.65)}px`;
-  dom.stageLyricUpcomingText.style.webkitTextStroke = state.outlineWidth > 1
-    ? `${state.outlineWidth - 1}px ${state.outlineColor}`
+  dom.stageLyricUpcomingText.style.webkitTextStroke = effectiveStrokeWidth > 1
+    ? `${effectiveStrokeWidth - 1}px ${effectiveStrokeColor}`
     : "0px transparent";
+  if (state.shadowDepth > 0 || state.shadowBlur > 0) {
+    dom.stageLyricUpcomingText.style.textShadow = `0 ${Math.round(state.shadowDepth * 0.7)}px ${Math.round(state.shadowBlur * 0.7)}px rgba(0,0,0,0.7)`;
+  } else {
+    dom.stageLyricUpcomingText.style.textShadow = "none";
+  }
 }
 
 // Background Darkness Slider
@@ -856,9 +873,9 @@ window.addEventListener("resize", () => {
   applyVisualStyles();
 });
 
-// Font Size Slider (up to 110px)
+// Font Size Slider (150px to 170px)
 dom.sliderFontSize.addEventListener("input", (e) => {
-  state.fontSize = Number(e.target.value);
+  state.fontSize = Math.min(170, Math.max(150, Number(e.target.value) || 150));
   dom.valFontSize.textContent = `${state.fontSize}px`;
   applyVisualStyles();
 });
@@ -891,11 +908,58 @@ dom.sliderOutlineWidth.addEventListener("input", (e) => {
 });
 
 // Shadow Depth Slider
-dom.sliderShadowDepth.addEventListener("input", (e) => {
-  state.shadowDepth = Number(e.target.value);
-  dom.valShadowDepth.textContent = `${state.shadowDepth}px`;
-  applyVisualStyles();
-});
+if (dom.sliderShadowDepth) {
+  dom.sliderShadowDepth.addEventListener("input", (e) => {
+    state.shadowDepth = Number(e.target.value);
+    if (dom.valShadowDepth) dom.valShadowDepth.textContent = `${state.shadowDepth}px`;
+    applyVisualStyles();
+  });
+}
+if (dom.btnResetShadowDepth) {
+  dom.btnResetShadowDepth.addEventListener("click", () => {
+    state.shadowDepth = 2;
+    if (dom.sliderShadowDepth) dom.sliderShadowDepth.value = "2";
+    if (dom.valShadowDepth) dom.valShadowDepth.textContent = "2px";
+    applyVisualStyles();
+    showToast("Shadow depth reset to 2px");
+  });
+}
+
+// Shadow Blur Slider
+if (dom.sliderShadowBlur) {
+  dom.sliderShadowBlur.addEventListener("input", (e) => {
+    state.shadowBlur = Number(e.target.value);
+    if (dom.valShadowBlur) dom.valShadowBlur.textContent = `${state.shadowBlur}px`;
+    applyVisualStyles();
+  });
+}
+if (dom.btnResetShadowBlur) {
+  dom.btnResetShadowBlur.addEventListener("click", () => {
+    state.shadowBlur = 4;
+    if (dom.sliderShadowBlur) dom.sliderShadowBlur.value = "4";
+    if (dom.valShadowBlur) dom.valShadowBlur.textContent = "4px";
+    applyVisualStyles();
+    showToast("Shadow blur reset to 4px");
+  });
+}
+
+// Shadow Spread Slider
+if (dom.sliderShadowSpread) {
+  dom.sliderShadowSpread.addEventListener("input", (e) => {
+    state.shadowSpread = Number(e.target.value);
+    if (dom.valShadowSpread) dom.valShadowSpread.textContent = `${state.shadowSpread}px`;
+    applyVisualStyles();
+  });
+}
+if (dom.btnResetShadowSpread) {
+  dom.btnResetShadowSpread.addEventListener("click", () => {
+    state.shadowSpread = 0;
+    if (dom.sliderShadowSpread) dom.sliderShadowSpread.value = "0";
+    if (dom.valShadowSpread) dom.valShadowSpread.textContent = "0px";
+    applyVisualStyles();
+    showToast("Shadow spread reset to 0px");
+  });
+}
 
 // Lyric Sync Delay Slider (-3.0s to +3.0s)
 if (dom.sliderLyricDelay) {
@@ -1383,13 +1447,15 @@ async function startVideoRender() {
       bgBlur: state.bgBlur,
       bgMotion: state.bgMotion,
       fontFamily: state.fontFamily,
-      fontSize: state.fontSize,
+      fontSize: Math.min(170, Math.max(150, state.fontSize || 150)),
       fontWeight: state.fontWeight,
       fontColor: state.textColor,
       outlineColor: state.outlineColor,
-      outlineWidth: state.outlineWidth,
+      outlineWidth: state.shadowSpread > 0 ? state.shadowSpread : state.outlineWidth,
       shadowColor: state.shadowColor,
       shadowDepth: state.shadowDepth,
+      shadowBlur: state.shadowBlur,
+      shadowSpread: state.shadowSpread,
       animation: state.animation,
       linesMode: state.linesMode,
       lyricDelay: state.lyricDelay,

@@ -366,13 +366,14 @@
             </select>
           </div>
 
-          <!-- Font Size Slider (36px to 180px, default 150px) -->
+          <!-- Font Size Slider (150px to 170px, default 150px) -->
           <div class="control-row">
             <div class="control-label-val">
               <span>Font Size</span>
               <span class="control-badge" id="valFontSize">150px</span>
             </div>
-            <input type="range" id="sliderFontSize" min="36" max="180" step="2" value="150">
+            <input type="range" id="sliderFontSize" min="150" max="170" step="1" value="150">
+            <span class="control-hint">Song lyrics size bounds: 150px &ndash; 170px</span>
           </div>
 
           <!-- Font Weight -->
@@ -422,9 +423,39 @@
           <div class="control-row">
             <div class="control-label-val">
               <span>Shadow & Glow Depth</span>
-              <span class="control-badge" id="valShadowDepth">2px</span>
+              <div class="sync-delay-wrap">
+                <span class="control-badge" id="valShadowDepth">2px</span>
+                <button type="button" class="btn-tiny" id="btnResetShadowDepth" title="Reset shadow depth to 2px"><i class="fa-solid fa-rotate-left"></i> 2px</button>
+              </div>
             </div>
-            <input type="range" id="sliderShadowDepth" min="0" max="12" step="1" value="2">
+            <input type="range" id="sliderShadowDepth" min="0" max="30" step="1" value="2">
+            <span class="control-hint">Shadow offset distance (0&ndash;30px)</span>
+          </div>
+
+          <!-- Shadow Blur / Softness -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Blur / Softness</span>
+              <div class="sync-delay-wrap">
+                <span class="control-badge" id="valShadowBlur">4px</span>
+                <button type="button" class="btn-tiny" id="btnResetShadowBlur" title="Reset blur to 4px"><i class="fa-solid fa-rotate-left"></i> 4px</button>
+              </div>
+            </div>
+            <input type="range" id="sliderShadowBlur" min="0" max="30" step="1" value="4">
+            <span class="control-hint">How spread/soft shadow edges are (0&ndash;30px)</span>
+          </div>
+
+          <!-- Shadow Spread -->
+          <div class="control-row">
+            <div class="control-label-val">
+              <span>Shadow Spread</span>
+              <div class="sync-delay-wrap">
+                <span class="control-badge" id="valShadowSpread">0px</span>
+                <button type="button" class="btn-tiny" id="btnResetShadowSpread" title="Reset spread to 0px"><i class="fa-solid fa-rotate-left"></i> 0px</button>
+              </div>
+            </div>
+            <input type="range" id="sliderShadowSpread" min="0" max="20" step="1" value="0">
+            <span class="control-hint">How much shadow expands around text (0&ndash;20px)</span>
           </div>
         </div>
 
@@ -686,6 +717,6 @@
   <!-- Notification Toast -->
   <div class="toast" id="toast">Notification message</div>
 
-  <script src="app.js?v=1.3"></script>
+  <script src="app.js?v=1.4"></script>
 </body>
 </html>
