@@ -23,8 +23,8 @@ const state = {
   textColor: "#FFFFFF",
   outlineColor: "#000000",
   outlineWidth: 0,
-  shadowDepth: 2,
-  shadowBlur: 4,
+  shadowDepth: 3,
+  shadowBlur: 21,
   shadowSpread: 0,
   shadowColor: "#000000",
   animation: "pop", // "pop", "slide", "fade", "bounce", etc.
@@ -917,11 +917,11 @@ if (dom.sliderShadowDepth) {
 }
 if (dom.btnResetShadowDepth) {
   dom.btnResetShadowDepth.addEventListener("click", () => {
-    state.shadowDepth = 2;
-    if (dom.sliderShadowDepth) dom.sliderShadowDepth.value = "2";
-    if (dom.valShadowDepth) dom.valShadowDepth.textContent = "2px";
+    state.shadowDepth = 3;
+    if (dom.sliderShadowDepth) dom.sliderShadowDepth.value = "3";
+    if (dom.valShadowDepth) dom.valShadowDepth.textContent = "3px";
     applyVisualStyles();
-    showToast("Shadow depth reset to 2px");
+    showToast("Shadow depth reset to 3px");
   });
 }
 
@@ -935,11 +935,11 @@ if (dom.sliderShadowBlur) {
 }
 if (dom.btnResetShadowBlur) {
   dom.btnResetShadowBlur.addEventListener("click", () => {
-    state.shadowBlur = 4;
-    if (dom.sliderShadowBlur) dom.sliderShadowBlur.value = "4";
-    if (dom.valShadowBlur) dom.valShadowBlur.textContent = "4px";
+    state.shadowBlur = 21;
+    if (dom.sliderShadowBlur) dom.sliderShadowBlur.value = "21";
+    if (dom.valShadowBlur) dom.valShadowBlur.textContent = "21px";
     applyVisualStyles();
-    showToast("Shadow blur reset to 4px");
+    showToast("Shadow blur reset to 21px");
   });
 }
 

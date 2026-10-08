@@ -489,11 +489,11 @@ async function executeProcessSong(overridePayload = {}) {
       songFont: dom.selectSongFont ? dom.selectSongFont.value : "auto",
       fontSize: dom.inputFontSize ? Math.min(170, Math.max(150, Number(dom.inputFontSize.value) || 150)) : 150,
       lyricsGlowDepth: dom.inputLyricsGlowDepth
-        ? Number(dom.inputLyricsGlowDepth.value) || 2
-        : 2,
+        ? Number(dom.inputLyricsGlowDepth.value) || 3
+        : 3,
       lyricsBlur: dom.inputLyricsBlur
-        ? Number(dom.inputLyricsBlur.value) || 4
-        : 4,
+        ? Number(dom.inputLyricsBlur.value) || 21
+        : 21,
       lyricsSpread: dom.inputLyricsSpread
         ? Number(dom.inputLyricsSpread.value) || 0
         : 0,
@@ -507,14 +507,14 @@ async function executeProcessSong(overridePayload = {}) {
         ? Number(document.getElementById("numThumbGap").value) || 42
         : 42,
       thumbnailGlowDepth: document.getElementById("numThumbGlowDepth")
-        ? Number(document.getElementById("numThumbGlowDepth").value) || 2
-        : 2,
+        ? Number(document.getElementById("numThumbGlowDepth").value) || 13
+        : 13,
       thumbnailBlur: document.getElementById("numThumbBlur")
-        ? Number(document.getElementById("numThumbBlur").value) || 4
-        : 4,
+        ? Number(document.getElementById("numThumbBlur").value) || 30
+        : 30,
       thumbnailSpread: document.getElementById("numThumbSpread")
-        ? Number(document.getElementById("numThumbSpread").value) || 0
-        : 0,
+        ? Number(document.getElementById("numThumbSpread").value) || 1
+        : 1,
       ...overridePayload,
     };
 
@@ -1081,12 +1081,12 @@ function openQueueEditModal(item) {
   if (dom.editTitleFontSize) dom.editTitleFontSize.value = Math.min(500, item.titleFontSize || 280);
   if (dom.editSingerFontSize) dom.editSingerFontSize.value = item.singerFontSize || 132;
   if (dom.editThumbnailGap) dom.editThumbnailGap.value = item.thumbnailGap !== undefined ? item.thumbnailGap : 42;
-  if (dom.editThumbnailGlowDepth) dom.editThumbnailGlowDepth.value = item.thumbnailGlowDepth !== undefined ? item.thumbnailGlowDepth : 2;
-  if (dom.editThumbnailBlur) dom.editThumbnailBlur.value = item.thumbnailBlur !== undefined ? item.thumbnailBlur : 4;
-  if (dom.editThumbnailSpread) dom.editThumbnailSpread.value = item.thumbnailSpread !== undefined ? item.thumbnailSpread : 0;
+  if (dom.editThumbnailGlowDepth) dom.editThumbnailGlowDepth.value = item.thumbnailGlowDepth !== undefined ? item.thumbnailGlowDepth : 13;
+  if (dom.editThumbnailBlur) dom.editThumbnailBlur.value = item.thumbnailBlur !== undefined ? item.thumbnailBlur : 30;
+  if (dom.editThumbnailSpread) dom.editThumbnailSpread.value = item.thumbnailSpread !== undefined ? item.thumbnailSpread : 1;
   if (dom.editLyricFontSize) dom.editLyricFontSize.value = Math.min(170, Math.max(150, item.lyricFontSize || 150));
-  if (dom.editLyricsGlowDepth) dom.editLyricsGlowDepth.value = item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 2;
-  if (dom.editLyricsBlur) dom.editLyricsBlur.value = item.lyricsBlur !== undefined ? item.lyricsBlur : 4;
+  if (dom.editLyricsGlowDepth) dom.editLyricsGlowDepth.value = item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 3;
+  if (dom.editLyricsBlur) dom.editLyricsBlur.value = item.lyricsBlur !== undefined ? item.lyricsBlur : 21;
   if (dom.editLyricsSpread) dom.editLyricsSpread.value = item.lyricsSpread !== undefined ? item.lyricsSpread : 0;
 
   // Populate background options in modal if available
@@ -1137,12 +1137,12 @@ if (dom.queueEditForm) {
       titleFontSize: Math.min(500, Math.max(80, Number(dom.editTitleFontSize.value) || 280)),
       singerFontSize: Number(dom.editSingerFontSize.value) || 132,
       thumbnailGap: Number(dom.editThumbnailGap.value) || 42,
-      thumbnailGlowDepth: Number(dom.editThumbnailGlowDepth.value) || 2,
-      thumbnailBlur: Number(dom.editThumbnailBlur?.value) || 4,
-      thumbnailSpread: Number(dom.editThumbnailSpread?.value) || 0,
+      thumbnailGlowDepth: Number(dom.editThumbnailGlowDepth.value) || 13,
+      thumbnailBlur: Number(dom.editThumbnailBlur?.value) || 30,
+      thumbnailSpread: Number(dom.editThumbnailSpread?.value) !== undefined ? Number(dom.editThumbnailSpread.value) : 1,
       fontSize: Math.min(170, Math.max(150, Number(dom.editLyricFontSize.value) || 150)),
-      lyricsGlowDepth: Number(dom.editLyricsGlowDepth.value) || 2,
-      lyricsBlur: Number(dom.editLyricsBlur?.value) || 4,
+      lyricsGlowDepth: Number(dom.editLyricsGlowDepth.value) || 3,
+      lyricsBlur: Number(dom.editLyricsBlur?.value) || 21,
       lyricsSpread: Number(dom.editLyricsSpread?.value) || 0,
     };
 
@@ -1649,9 +1649,9 @@ function initThumbnailLiveComposer() {
     const titleSize = Math.min(500, Math.max(80, Number(numTitleFontSize?.value) || 280));
     const singerSize = Number(numSingerFontSize?.value) || 132;
     const gap = Number(numThumbGap?.value) || 42;
-    const glowDepth = Number(numThumbGlowDepth?.value !== undefined ? numThumbGlowDepth.value : 2);
-    const thumbBlur = Number(document.getElementById("numThumbBlur")?.value !== undefined ? document.getElementById("numThumbBlur").value : 4);
-    const thumbSpread = Number(document.getElementById("numThumbSpread")?.value !== undefined ? document.getElementById("numThumbSpread").value : 0);
+    const glowDepth = Number(numThumbGlowDepth?.value !== undefined && numThumbGlowDepth.value !== "" ? numThumbGlowDepth.value : 13);
+    const thumbBlur = Number(document.getElementById("numThumbBlur")?.value !== undefined && document.getElementById("numThumbBlur").value !== "" ? document.getElementById("numThumbBlur").value : 30);
+    const thumbSpread = Number(document.getElementById("numThumbSpread")?.value !== undefined && document.getElementById("numThumbSpread").value !== "" ? document.getElementById("numThumbSpread").value : 1);
 
     // 4. Compute Layout matching backend automation.js
     const titleLayout = computeTitleLines(titleRaw, 1728);
@@ -1763,16 +1763,16 @@ function initThumbnailLiveComposer() {
 
   if (btnResetThumbBlur) {
     btnResetThumbBlur.addEventListener("click", () => {
-      if (sliderThumbBlur) sliderThumbBlur.value = 4;
-      if (numThumbBlur) numThumbBlur.value = 4;
+      if (sliderThumbBlur) sliderThumbBlur.value = 30;
+      if (numThumbBlur) numThumbBlur.value = 30;
       renderThumbnailCanvas();
     });
   }
 
   if (btnResetThumbSpread) {
     btnResetThumbSpread.addEventListener("click", () => {
-      if (sliderThumbSpread) sliderThumbSpread.value = 0;
-      if (numThumbSpread) numThumbSpread.value = 0;
+      if (sliderThumbSpread) sliderThumbSpread.value = 1;
+      if (numThumbSpread) numThumbSpread.value = 1;
       renderThumbnailCanvas();
     });
   }
@@ -1808,8 +1808,8 @@ function initThumbnailLiveComposer() {
 
   if (btnResetGlowDepth) {
     btnResetGlowDepth.addEventListener("click", () => {
-      if (sliderThumbGlowDepth) sliderThumbGlowDepth.value = 2;
-      if (numThumbGlowDepth) numThumbGlowDepth.value = 2;
+      if (sliderThumbGlowDepth) sliderThumbGlowDepth.value = 13;
+      if (numThumbGlowDepth) numThumbGlowDepth.value = 13;
       renderThumbnailCanvas();
     });
   }
@@ -1822,8 +1822,12 @@ function initThumbnailLiveComposer() {
       if (numSingerFontSize) numSingerFontSize.value = 132;
       if (sliderThumbGap) sliderThumbGap.value = 42;
       if (numThumbGap) numThumbGap.value = 42;
-      if (sliderThumbGlowDepth) sliderThumbGlowDepth.value = 2;
-      if (numThumbGlowDepth) numThumbGlowDepth.value = 2;
+      if (sliderThumbGlowDepth) sliderThumbGlowDepth.value = 13;
+      if (numThumbGlowDepth) numThumbGlowDepth.value = 13;
+      if (sliderThumbBlur) sliderThumbBlur.value = 30;
+      if (numThumbBlur) numThumbBlur.value = 30;
+      if (sliderThumbSpread) sliderThumbSpread.value = 1;
+      if (numThumbSpread) numThumbSpread.value = 1;
       renderThumbnailCanvas();
     });
   }
@@ -2054,8 +2058,8 @@ function initLyricsControls() {
       }
     }
 
-    const depth = dom.inputLyricsGlowDepth ? Number(dom.inputLyricsGlowDepth.value) || 0 : 2;
-    const blur = dom.inputLyricsBlur ? Number(dom.inputLyricsBlur.value) || 0 : 4;
+    const depth = dom.inputLyricsGlowDepth ? Number(dom.inputLyricsGlowDepth.value) || 0 : 3;
+    const blur = dom.inputLyricsBlur ? Number(dom.inputLyricsBlur.value) || 0 : 21;
     const spread = dom.inputLyricsSpread ? Number(dom.inputLyricsSpread.value) || 0 : 0;
 
     if (dom.valLyricsGlowDepthBadge) dom.valLyricsGlowDepthBadge.textContent = `${depth}px`;
@@ -2087,8 +2091,8 @@ function initLyricsControls() {
   }
   if (dom.btnResetLyricsGlow) {
     dom.btnResetLyricsGlow.addEventListener("click", () => {
-      if (dom.sliderLyricsGlowDepth) dom.sliderLyricsGlowDepth.value = 2;
-      if (dom.inputLyricsGlowDepth) dom.inputLyricsGlowDepth.value = 2;
+      if (dom.sliderLyricsGlowDepth) dom.sliderLyricsGlowDepth.value = 3;
+      if (dom.inputLyricsGlowDepth) dom.inputLyricsGlowDepth.value = 3;
       updateLyricsPreviewStyle();
     });
   }
@@ -2106,8 +2110,8 @@ function initLyricsControls() {
   }
   if (dom.btnResetLyricsBlur) {
     dom.btnResetLyricsBlur.addEventListener("click", () => {
-      if (dom.sliderLyricsBlur) dom.sliderLyricsBlur.value = 4;
-      if (dom.inputLyricsBlur) dom.inputLyricsBlur.value = 4;
+      if (dom.sliderLyricsBlur) dom.sliderLyricsBlur.value = 21;
+      if (dom.inputLyricsBlur) dom.inputLyricsBlur.value = 21;
       updateLyricsPreviewStyle();
     });
   }

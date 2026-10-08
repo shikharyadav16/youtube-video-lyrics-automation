@@ -336,9 +336,9 @@ export async function generateThumbnail({
   titleFontSize = null,
   singerFontSize = null,
   gap = null,
-  glowDepth = 2,
-  blur = 4,
-  spread = 0,
+  glowDepth = 13,
+  blur = 30,
+  spread = 1,
   outPath,
   ffmpegExe,
 }) {
@@ -381,16 +381,16 @@ export async function generateThumbnail({
     : 0;
 
   const finalGlowDepth = glowDepth !== undefined && !isNaN(Number(glowDepth))
-    ? Math.max(0, Math.min(30, Number(glowDepth)))
-    : 2;
+    ? Math.max(0, Math.min(50, Number(glowDepth)))
+    : 13;
 
   const finalBlur = blur !== undefined && !isNaN(Number(blur))
-    ? Math.max(0, Math.min(30, Number(blur)))
-    : 4;
+    ? Math.max(0, Math.min(50, Number(blur)))
+    : 30;
 
   const finalSpread = spread !== undefined && !isNaN(Number(spread))
     ? Math.max(0, Math.min(20, Number(spread)))
-    : 0;
+    : 1;
 
   const finalTitleFont = resolveFontForText(titleFont, songTitle);
   const finalSingerFont = resolveFontForText(singerFont, singerClean);

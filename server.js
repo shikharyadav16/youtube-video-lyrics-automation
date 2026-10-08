@@ -930,8 +930,8 @@ function generateAssSubtitles({
   outlineColor = "#000000",
   outlineWidth = 0,
   shadowColor = "#000000",
-  shadowDepth = 2,
-  shadowBlur = 4,
+  shadowDepth = 3,
+  shadowBlur = 21,
   shadowSpread = 0,
   animation = "pop",
   songDurationMs = 180000,
@@ -964,11 +964,11 @@ function generateAssSubtitles({
   const effectiveShadow =
     shadowDepth !== undefined && !isNaN(Number(shadowDepth))
       ? Math.max(0, Number(shadowDepth))
-      : 2;
+      : 3;
   const effectiveBlur =
     shadowBlur !== undefined && !isNaN(Number(shadowBlur))
-      ? Math.max(0, Math.min(30, Number(shadowBlur)))
-      : 4;
+      ? Math.max(0, Math.min(50, Number(shadowBlur)))
+      : 21;
 
   let ass = `[Script Info]
 Title: Spark Style Lyric Video
@@ -1309,11 +1309,11 @@ async function executeRenderPipeline(
     shadowDepth:
       options.shadowDepth !== undefined && !isNaN(Number(options.shadowDepth))
         ? Number(options.shadowDepth)
-        : 2,
+        : 3,
     shadowBlur:
       options.shadowBlur !== undefined && !isNaN(Number(options.shadowBlur))
         ? Number(options.shadowBlur)
-        : 4,
+        : 21,
     shadowSpread:
       options.shadowSpread !== undefined && !isNaN(Number(options.shadowSpread))
         ? Number(options.shadowSpread)
@@ -1625,11 +1625,11 @@ function getQueueSnapshot() {
       titleFontSize: j.titleFontSize || 280,
       singerFontSize: j.singerFontSize || 132,
       thumbnailGap: j.thumbnailGap !== undefined ? j.thumbnailGap : 42,
-      thumbnailGlowDepth: j.thumbnailGlowDepth !== undefined ? j.thumbnailGlowDepth : 2,
-      thumbnailBlur: j.thumbnailBlur !== undefined ? j.thumbnailBlur : 4,
-      thumbnailSpread: j.thumbnailSpread !== undefined ? j.thumbnailSpread : 0,
-      lyricsGlowDepth: j.lyricsGlowDepth !== undefined ? j.lyricsGlowDepth : 2,
-      lyricsBlur: j.lyricsBlur !== undefined ? j.lyricsBlur : 4,
+      thumbnailGlowDepth: j.thumbnailGlowDepth !== undefined ? j.thumbnailGlowDepth : 13,
+      thumbnailBlur: j.thumbnailBlur !== undefined ? j.thumbnailBlur : 30,
+      thumbnailSpread: j.thumbnailSpread !== undefined ? j.thumbnailSpread : 1,
+      lyricsGlowDepth: j.lyricsGlowDepth !== undefined ? j.lyricsGlowDepth : 3,
+      lyricsBlur: j.lyricsBlur !== undefined ? j.lyricsBlur : 21,
       lyricsSpread: j.lyricsSpread !== undefined ? j.lyricsSpread : 0,
       lyricFontSize: Math.min(170, Math.max(150, Number(j.lyricFontSize) || 150)),
       createdAt: j.createdAt,
@@ -1656,9 +1656,9 @@ async function runAutomationPipelineForJob(job) {
     titleFontSize: job.titleFontSize ? Math.min(500, Math.max(80, Number(job.titleFontSize))) : 280,
     singerFontSize: job.singerFontSize || 132,
     gap: job.thumbnailGap || 42,
-    glowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 2,
-    blur: job.thumbnailBlur !== undefined ? Number(job.thumbnailBlur) : 4,
-    spread: job.thumbnailSpread !== undefined ? Number(job.thumbnailSpread) : 0,
+    glowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 13,
+    blur: job.thumbnailBlur !== undefined ? Number(job.thumbnailBlur) : 30,
+    spread: job.thumbnailSpread !== undefined ? Number(job.thumbnailSpread) : 1,
     outPath: thumbPath,
     ffmpegExe,
   });
@@ -1686,8 +1686,8 @@ async function runAutomationPipelineForJob(job) {
       bgDarkness: 0,
       bgBlur: 0,
       outlineWidth: job.lyricsSpread !== undefined && !isNaN(Number(job.lyricsSpread)) ? Number(job.lyricsSpread) : 0,
-      shadowDepth: job.lyricsGlowDepth !== undefined && !isNaN(Number(job.lyricsGlowDepth)) ? Number(job.lyricsGlowDepth) : 2,
-      shadowBlur: job.lyricsBlur !== undefined && !isNaN(Number(job.lyricsBlur)) ? Number(job.lyricsBlur) : 4,
+      shadowDepth: job.lyricsGlowDepth !== undefined && !isNaN(Number(job.lyricsGlowDepth)) ? Number(job.lyricsGlowDepth) : 3,
+      shadowBlur: job.lyricsBlur !== undefined && !isNaN(Number(job.lyricsBlur)) ? Number(job.lyricsBlur) : 21,
       shadowSpread: job.lyricsSpread !== undefined && !isNaN(Number(job.lyricsSpread)) ? Number(job.lyricsSpread) : 0,
       fontFamily: job.fontFamily,
       animation: job.animation,
@@ -1791,13 +1791,13 @@ async function runAutomationPipelineForJob(job) {
           titleFontSize: job.titleFontSize || 280,
           singerFontSize: job.singerFontSize || 132,
           thumbnailGap: job.thumbnailGap !== undefined ? job.thumbnailGap : 42,
-          thumbnailGlowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 2,
-          thumbnailBlur: job.thumbnailBlur !== undefined ? job.thumbnailBlur : 4,
-          thumbnailSpread: job.thumbnailSpread !== undefined ? job.thumbnailSpread : 0,
+          thumbnailGlowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 13,
+          thumbnailBlur: job.thumbnailBlur !== undefined ? job.thumbnailBlur : 30,
+          thumbnailSpread: job.thumbnailSpread !== undefined ? job.thumbnailSpread : 1,
           lyricsCount: job.lyricsLines.length,
           lyricsFontSize: Math.min(170, Math.max(150, Number(job.lyricFontSize) || 150)),
-          lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 2,
-          lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 4,
+          lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 3,
+          lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 21,
           lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
           createdAt: new Date(),
         };
@@ -2178,11 +2178,11 @@ app.post("/api/admin/process-song", async (req, res) => {
       titleFontSize: titleFontSize && !isNaN(Number(titleFontSize)) ? Math.max(40, Math.min(500, Number(titleFontSize))) : 280,
       singerFontSize: singerFontSize && !isNaN(Number(singerFontSize)) ? Number(singerFontSize) : 132,
       thumbnailGap: thumbnailGap !== undefined && thumbnailGap !== null && !isNaN(Number(thumbnailGap)) ? Number(thumbnailGap) : 42,
-      thumbnailGlowDepth: thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth)) ? Number(thumbnailGlowDepth) : 2,
-      thumbnailBlur: thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur)) ? Math.max(0, Math.min(30, Number(thumbnailBlur))) : 4,
-      thumbnailSpread: thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread)) ? Math.max(0, Math.min(20, Number(thumbnailSpread))) : 0,
-      lyricsGlowDepth: lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth)) ? Number(lyricsGlowDepth) : 2,
-      lyricsBlur: lyricsBlur !== undefined && !isNaN(Number(lyricsBlur)) ? Math.max(0, Math.min(30, Number(lyricsBlur))) : 4,
+      thumbnailGlowDepth: thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth)) ? Number(thumbnailGlowDepth) : 13,
+      thumbnailBlur: thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur)) ? Math.max(0, Math.min(50, Number(thumbnailBlur))) : 30,
+      thumbnailSpread: thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread)) ? Math.max(0, Math.min(20, Number(thumbnailSpread))) : 1,
+      lyricsGlowDepth: lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth)) ? Number(lyricsGlowDepth) : 3,
+      lyricsBlur: lyricsBlur !== undefined && !isNaN(Number(lyricsBlur)) ? Math.max(0, Math.min(50, Number(lyricsBlur))) : 21,
       lyricsSpread: lyricsSpread !== undefined && !isNaN(Number(lyricsSpread)) ? Math.max(0, Math.min(20, Number(lyricsSpread))) : 0,
       animation,
       lyricsLines: lyricsData.lines,
@@ -2336,10 +2336,10 @@ app.put("/api/admin/queue/:id", (req, res) => {
   if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
   if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
   if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
-  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(30, Number(thumbnailBlur)));
+  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(50, Number(thumbnailBlur)));
   if (thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread))) job.thumbnailSpread = Math.max(0, Math.min(20, Number(thumbnailSpread)));
   if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
-  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(30, Number(lyricsBlur)));
+  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(50, Number(lyricsBlur)));
   if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
   if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
 
@@ -2359,12 +2359,12 @@ app.put("/api/admin/queue/:id", (req, res) => {
       titleFontSize: job.titleFontSize,
       singerFontSize: job.singerFontSize,
       thumbnailGap: job.thumbnailGap,
-      thumbnailGlowDepth: job.thumbnailGlowDepth,
-      thumbnailBlur: job.thumbnailBlur,
-      thumbnailSpread: job.thumbnailSpread,
-      lyricsGlowDepth: job.lyricsGlowDepth,
-      lyricsBlur: job.lyricsBlur,
-      lyricsSpread: job.lyricsSpread,
+      thumbnailGlowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 13,
+      thumbnailBlur: job.thumbnailBlur !== undefined ? job.thumbnailBlur : 30,
+      thumbnailSpread: job.thumbnailSpread !== undefined ? job.thumbnailSpread : 1,
+      lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 3,
+      lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 21,
+      lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
       lyricFontSize: job.lyricFontSize,
     },
     queue: getQueueSnapshot(),
@@ -2414,10 +2414,10 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
   if (singerFontSize && !isNaN(Number(singerFontSize))) job.singerFontSize = Number(singerFontSize);
   if (thumbnailGap !== undefined && !isNaN(Number(thumbnailGap))) job.thumbnailGap = Number(thumbnailGap);
   if (thumbnailGlowDepth !== undefined && !isNaN(Number(thumbnailGlowDepth))) job.thumbnailGlowDepth = Number(thumbnailGlowDepth);
-  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(30, Number(thumbnailBlur)));
+  if (thumbnailBlur !== undefined && !isNaN(Number(thumbnailBlur))) job.thumbnailBlur = Math.max(0, Math.min(50, Number(thumbnailBlur)));
   if (thumbnailSpread !== undefined && !isNaN(Number(thumbnailSpread))) job.thumbnailSpread = Math.max(0, Math.min(20, Number(thumbnailSpread)));
   if (lyricsGlowDepth !== undefined && !isNaN(Number(lyricsGlowDepth))) job.lyricsGlowDepth = Number(lyricsGlowDepth);
-  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(30, Number(lyricsBlur)));
+  if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(50, Number(lyricsBlur)));
   if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
   if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
 
@@ -2437,12 +2437,12 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
       titleFontSize: job.titleFontSize,
       singerFontSize: job.singerFontSize,
       thumbnailGap: job.thumbnailGap,
-      thumbnailGlowDepth: job.thumbnailGlowDepth,
-      thumbnailBlur: job.thumbnailBlur,
-      thumbnailSpread: job.thumbnailSpread,
-      lyricsGlowDepth: job.lyricsGlowDepth,
-      lyricsBlur: job.lyricsBlur,
-      lyricsSpread: job.lyricsSpread,
+      thumbnailGlowDepth: job.thumbnailGlowDepth !== undefined ? job.thumbnailGlowDepth : 13,
+      thumbnailBlur: job.thumbnailBlur !== undefined ? job.thumbnailBlur : 30,
+      thumbnailSpread: job.thumbnailSpread !== undefined ? job.thumbnailSpread : 1,
+      lyricsGlowDepth: job.lyricsGlowDepth !== undefined ? job.lyricsGlowDepth : 3,
+      lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 21,
+      lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
       lyricFontSize: job.lyricFontSize,
     },
     queue: getQueueSnapshot(),
