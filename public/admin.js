@@ -63,6 +63,8 @@ const dom = {
   inputLyricsSpread: document.getElementById("inputLyricsSpread"),
   valLyricsSpreadBadge: document.getElementById("valLyricsSpreadBadge"),
   btnResetLyricsSpread: document.getElementById("btnResetLyricsSpread"),
+  selectAdminEffect: document.getElementById("selectAdminEffect"),
+  valAdminEffectBadge: document.getElementById("valAdminEffectBadge"),
   
   responseBanner: document.getElementById("responseBanner"),
   
@@ -125,6 +127,7 @@ const dom = {
   editThumbnailBlur: document.getElementById("editThumbnailBlur"),
   editThumbnailSpread: document.getElementById("editThumbnailSpread"),
   editLyricFontSize: document.getElementById("editLyricFontSize"),
+  editEffect: document.getElementById("editEffect"),
   editLyricsGlowDepth: document.getElementById("editLyricsGlowDepth"),
   editLyricsBlur: document.getElementById("editLyricsBlur"),
   editLyricsSpread: document.getElementById("editLyricsSpread"),
@@ -515,6 +518,7 @@ async function executeProcessSong(overridePayload = {}) {
       thumbnailSpread: document.getElementById("numThumbSpread")
         ? Number(document.getElementById("numThumbSpread").value) || 1
         : 1,
+      animation: dom.selectAdminEffect ? dom.selectAdminEffect.value : "crossfade",
       ...overridePayload,
     };
 
@@ -1004,7 +1008,7 @@ async function loadQueue() {
                 <div class="queue-item-meta-tags">
                   <span>Font: ${escapeHtml(item.chosenTitleFont || "Auto")}</span>
                   <span>BG: ${escapeHtml(item.background || "Auto")}</span>
-                  <span>Lyrics: ${escapeHtml(item.fontFamily || "Auto")} (${item.lyricFontSize || 150}px, glow: ${item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 2}px)</span>
+                  <span>Lyrics: ${escapeHtml(item.fontFamily || "Auto")} (${item.lyricFontSize || 150}px, ${escapeHtml(item.animation || "crossfade")})</span>
                 </div>
               </div>
             </div>
@@ -1085,6 +1089,7 @@ function openQueueEditModal(item) {
   if (dom.editThumbnailBlur) dom.editThumbnailBlur.value = item.thumbnailBlur !== undefined ? item.thumbnailBlur : 30;
   if (dom.editThumbnailSpread) dom.editThumbnailSpread.value = item.thumbnailSpread !== undefined ? item.thumbnailSpread : 1;
   if (dom.editLyricFontSize) dom.editLyricFontSize.value = Math.min(170, Math.max(150, item.lyricFontSize || 150));
+  if (dom.editEffect) dom.editEffect.value = item.animation || "crossfade";
   if (dom.editLyricsGlowDepth) dom.editLyricsGlowDepth.value = item.lyricsGlowDepth !== undefined ? item.lyricsGlowDepth : 3;
   if (dom.editLyricsBlur) dom.editLyricsBlur.value = item.lyricsBlur !== undefined ? item.lyricsBlur : 21;
   if (dom.editLyricsSpread) dom.editLyricsSpread.value = item.lyricsSpread !== undefined ? item.lyricsSpread : 0;
@@ -1141,6 +1146,7 @@ if (dom.queueEditForm) {
       thumbnailBlur: Number(dom.editThumbnailBlur?.value) || 30,
       thumbnailSpread: Number(dom.editThumbnailSpread?.value) !== undefined ? Number(dom.editThumbnailSpread.value) : 1,
       fontSize: Math.min(170, Math.max(150, Number(dom.editLyricFontSize.value) || 150)),
+      animation: dom.editEffect ? dom.editEffect.value : "crossfade",
       lyricsGlowDepth: Number(dom.editLyricsGlowDepth.value) || 3,
       lyricsBlur: Number(dom.editLyricsBlur?.value) || 21,
       lyricsSpread: Number(dom.editLyricsSpread?.value) || 0,
@@ -1530,37 +1536,44 @@ function initThumbnailLiveComposer() {
     return units;
   }
 
-  // Compute 1 or 2 lines for title
-  function computeTitleLines(title, targetWidth = 1728) {
+  // Compute 1 or 2 lines for title (keep on 1 line unless exceeding 99% of 1920 thumbnail width)
+  function computeTitleLines(title, targetWidth = 1900, currentFontSize = null) {
     const cleanTitle = (title || "").trim();
     if (!cleanTitle) return { lines: ["Song Title"], lineCount: 1 };
     const words = cleanTitle.split(/\s+/).filter(Boolean);
+    const nominal = currentFontSize || 280;
+    const maxWidth99 = Math.floor(1920 * 0.99); // 1900px
+    const singleUnits = estimateTextUnits(cleanTitle);
 
-    if (words.length <= 3) {
+    // Keep on 1 line if single line width fits within 99% of thumbnail width
+    if (singleUnits * nominal <= maxWidth99) {
       return { lines: [cleanTitle], lineCount: 1 };
     }
 
-    // Wrap into 2 balanced lines
-    let bestSplit = 1;
-    let minMaxUnits = Infinity;
-    for (let i = 1; i < words.length; i++) {
-      const l1 = words.slice(0, i).join(" ");
-      const l2 = words.slice(i).join(" ");
-      const u1 = estimateTextUnits(l1);
-      const u2 = estimateTextUnits(l2);
-      const maxU = Math.max(u1, u2);
-      if (maxU < minMaxUnits) {
-        minMaxUnits = maxU;
-        bestSplit = i;
+    // Wrap into 2 balanced lines only when it exceeds 99% of thumbnail width
+    if (words.length >= 2) {
+      let bestSplit = 1;
+      let minMaxUnits = Infinity;
+      for (let i = 1; i < words.length; i++) {
+        const l1 = words.slice(0, i).join(" ");
+        const l2 = words.slice(i).join(" ");
+        const u1 = estimateTextUnits(l1);
+        const u2 = estimateTextUnits(l2);
+        const maxU = Math.max(u1, u2);
+        if (maxU < minMaxUnits) {
+          minMaxUnits = maxU;
+          bestSplit = i;
+        }
       }
+      return {
+        lines: [
+          words.slice(0, bestSplit).join(" "),
+          words.slice(bestSplit).join(" "),
+        ],
+        lineCount: 2,
+      };
     }
-    return {
-      lines: [
-        words.slice(0, bestSplit).join(" "),
-        words.slice(bestSplit).join(" "),
-      ],
-      lineCount: 2,
-    };
+    return { lines: [cleanTitle], lineCount: 1 };
   }
 
   // Auto-fit calculations
@@ -1568,23 +1581,23 @@ function initThumbnailLiveComposer() {
     const clean = (title || "").trim();
     if (!clean) return 280;
     const nominal = 280;
-    const targetWidth = 1728; // 90% of 1920
+    const maxWidth99 = Math.floor(1920 * 0.99); // 1900px
     const words = clean.split(/\s+/).filter(Boolean);
     const units1 = estimateTextUnits(clean);
 
-    if (units1 * nominal <= targetWidth && words.length <= 3) {
+    if (units1 * nominal <= maxWidth99) {
       return nominal;
     }
-    const singleLineFit = Math.floor(targetWidth / Math.max(1, units1));
-    if (words.length <= 4 && singleLineFit >= 220) {
+    const singleLineFit = Math.floor(maxWidth99 / Math.max(1, units1));
+    if (singleLineFit >= 160) {
       return Math.min(nominal, singleLineFit);
     }
     if (words.length >= 2) {
-      const { lines } = computeTitleLines(clean, targetWidth);
+      const { lines } = computeTitleLines(clean, maxWidth99, nominal);
       const maxUnits = Math.max(estimateTextUnits(lines[0]), estimateTextUnits(lines[1]));
       let size = nominal;
-      if (maxUnits * nominal > targetWidth) {
-        size = Math.floor(targetWidth / Math.max(1, maxUnits));
+      if (maxUnits * nominal > maxWidth99) {
+        size = Math.floor(maxWidth99 / Math.max(1, maxUnits));
       }
       return Math.max(80, Math.min(500, size));
     }
@@ -1653,8 +1666,8 @@ function initThumbnailLiveComposer() {
     const thumbBlur = Number(document.getElementById("numThumbBlur")?.value !== undefined && document.getElementById("numThumbBlur").value !== "" ? document.getElementById("numThumbBlur").value : 30);
     const thumbSpread = Number(document.getElementById("numThumbSpread")?.value !== undefined && document.getElementById("numThumbSpread").value !== "" ? document.getElementById("numThumbSpread").value : 1);
 
-    // 4. Compute Layout matching backend automation.js
-    const titleLayout = computeTitleLines(titleRaw, 1728);
+    // 4. Compute Layout matching backend automation.js (99% width rule)
+    const titleLayout = computeTitleLines(titleRaw, Math.floor(1920 * 0.99), titleSize);
     const isTwoLines = titleLayout.lineCount > 1;
 
     const titleH = isTwoLines ? titleSize * 1.85 : titleSize * 0.9;
@@ -2141,6 +2154,15 @@ function initLyricsControls() {
       const val = Number(dom.inputFontSize.value) || 150;
       dom.inputFontSize.value = Math.min(170, Math.max(150, val));
       updateLyricsPreviewStyle();
+    });
+  }
+
+  // 5. Lyric Effect Selection (Default: Crossfade)
+  if (dom.selectAdminEffect) {
+    dom.selectAdminEffect.addEventListener("change", () => {
+      if (dom.valAdminEffectBadge) {
+        dom.valAdminEffectBadge.textContent = dom.selectAdminEffect.value;
+      }
     });
   }
 

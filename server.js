@@ -925,7 +925,7 @@ function generateAssSubtitles({
   lines,
   fontFamily = "Edo",
   fontSize = 150,
-  fontWeight = "Bold",
+  fontWeight = "Regular",
   primaryColor = "#FFFFFF",
   outlineColor = "#000000",
   outlineWidth = 0,
@@ -933,7 +933,7 @@ function generateAssSubtitles({
   shadowDepth = 3,
   shadowBlur = 21,
   shadowSpread = 0,
-  animation = "pop",
+  animation = "fade",
   songDurationMs = 180000,
   linesMode = "single", // "single" or "duo"
   lyricDelay = 0.0,
@@ -983,6 +983,7 @@ PlayResY: 1080
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Default,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
 Style: Upcoming,${assFont},${Math.round(finalFontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
+Style: Particle,Arial,24,&H80FFFFFF&,&H000000FF,&H40FFFFFF&,&H00000000&,0,0,0,0,100,100,0,0,1,1,0,5,10,10,10,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -1008,12 +1009,66 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     const fadeMs = Math.min(220, Math.floor(durationMs * 0.22));
 
+    // Decorative particles for dynamic visual effects
+    if (animation === "bubbles") {
+      const bubbleSeeds = [
+        { x: 380, y1: 120, x2: 410, y2: 780, fs: 24, alpha: "D8", sym: "●" },
+        { x: 680, y1: 60, x2: 660, y2: 720, fs: 32, alpha: "E0", sym: "○" },
+        { x: 1180, y1: 180, x2: 1210, y2: 840, fs: 20, alpha: "D0", sym: "●" },
+        { x: 1540, y1: 90, x2: 1510, y2: 790, fs: 28, alpha: "E2", sym: "○" },
+        { x: 880, y1: 140, x2: 900, y2: 710, fs: 18, alpha: "D6", sym: "●" },
+        { x: 1360, y1: 100, x2: 1340, y2: 820, fs: 22, alpha: "DE", sym: "○" },
+      ];
+      for (const b of bubbleSeeds) {
+        ass += `Dialogue: 0,${startStr},${endStr},Particle,,0,0,0,,{\\move(${b.x},${b.y1},${b.x2},${b.y2})\\fs${b.fs}\\alpha&H${b.alpha}&\\fad(${fadeMs},${fadeMs})}${b.sym}\n`;
+      }
+    } else if (animation === "sparkles") {
+      const sparkleSeeds = [
+        { x: 420, y1: 680, x2: 440, y2: 240, fs: 22, alpha: "C0", sym: "✦" },
+        { x: 780, y1: 720, x2: 760, y2: 280, fs: 28, alpha: "D0", sym: "✧" },
+        { x: 1140, y1: 660, x2: 1160, y2: 220, fs: 20, alpha: "C4", sym: "✦" },
+        { x: 1480, y1: 740, x2: 1460, y2: 300, fs: 26, alpha: "D4", sym: "✧" },
+        { x: 920, y1: 690, x2: 940, y2: 260, fs: 18, alpha: "BC", sym: "✦" },
+      ];
+      for (const s of sparkleSeeds) {
+        ass += `Dialogue: 0,${startStr},${endStr},Particle,,0,0,0,,{\\move(${s.x},${s.y1},${s.x2},${s.y2})\\fs${s.fs}\\alpha&H${s.alpha}&\\fad(${fadeMs},${fadeMs})}${s.sym}\n`;
+      }
+    } else if (animation === "snow") {
+      const snowSeeds = [
+        { x: 340, y1: 80, x2: 380, y2: 820, fs: 22, alpha: "C8", sym: "❄" },
+        { x: 720, y1: 40, x2: 690, y2: 780, fs: 18, alpha: "D4", sym: "•" },
+        { x: 1220, y1: 100, x2: 1260, y2: 860, fs: 24, alpha: "CC", sym: "❄" },
+        { x: 1600, y1: 60, x2: 1570, y2: 800, fs: 16, alpha: "D8", sym: "•" },
+      ];
+      for (const sn of snowSeeds) {
+        ass += `Dialogue: 0,${startStr},${endStr},Particle,,0,0,0,,{\\move(${sn.x},${sn.y1},${sn.x2},${sn.y2})\\fs${sn.fs}\\alpha&H${sn.alpha}&\\fad(${fadeMs},${fadeMs})}${sn.sym}\n`;
+      }
+    } else if (animation === "rain") {
+      const rainSeeds = [
+        { x: 400, y1: 50, x2: 390, y2: 900, fs: 26, alpha: "D8", sym: "│" },
+        { x: 800, y1: 30, x2: 790, y2: 920, fs: 26, alpha: "E0", sym: "│" },
+        { x: 1200, y1: 60, x2: 1190, y2: 890, fs: 26, alpha: "D4", sym: "│" },
+        { x: 1560, y1: 40, x2: 1550, y2: 930, fs: 26, alpha: "DC", sym: "│" },
+      ];
+      for (const r of rainSeeds) {
+        ass += `Dialogue: 0,${startStr},${endStr},Particle,,0,0,0,,{\\move(${r.x},${r.y1},${r.x2},${r.y2})\\fs${r.fs}\\alpha&H${r.alpha}&\\fad(${fadeMs},${fadeMs})}${r.sym}\n`;
+      }
+    }
+
     // Animation tags - Ensure initial transform tags are placed BEFORE \\t() so libass doesn't overwrite
     let animTags = "";
     if (animation === "pop") {
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\fscx92\\fscy92\\t(0,${Math.min(220, durationMs)},\\fscx100\\fscy100)`;
     } else if (animation === "slide") {
       animTags = `\\an5\\fad(${fadeMs},${fadeMs})\\move(960,570,960,540,0,${Math.min(300, durationMs)})`;
+    } else if (animation === "bubbles") {
+      animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\move(960,518,960,540,0,${Math.min(320, durationMs)})\\t(0,${Math.min(320, durationMs)},\\fscx100\\fscy100)`;
+    } else if (animation === "sparkles") {
+      animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\move(960,555,960,540,0,${Math.min(300, durationMs)})\\t(0,${Math.min(220, durationMs)},\\fscx104\\fscy104)\\t(${Math.min(220, durationMs)},${Math.min(420, durationMs)},\\fscx100\\fscy100)`;
+    } else if (animation === "snow") {
+      animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\move(960,525,960,540,0,${Math.min(400, durationMs)})`;
+    } else if (animation === "rain") {
+      animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\move(960,500,960,540,0,${Math.min(250, durationMs)})`;
     } else if (animation === "bounce") {
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\fscx95\\fscy95\\t(0,140,\\fscx106\\fscy106)\\t(140,280,\\fscx100\\fscy100)`;
     } else if (animation === "zoom") {
@@ -1031,7 +1086,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     } else if (animation === "swing") {
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\t(0,120,\\frz-8)\\t(120,260,\\frz5)\\t(260,380,\\frz-2)\\t(380,460,\\frz0)`;
     } else {
-      // Classic smooth fade
+      // Classic smooth crossfade (fade)
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})`;
     }
 
@@ -1271,7 +1326,7 @@ async function executeRenderPipeline(
     songDurationSec = Math.max(120, Math.ceil((lastLyric?.timeMs || 60000) / 1000) + 8);
   }
 
-  // Map transition style if user passed alias e.g. "slide up", "crossfade", "flip in"
+  // Map transition style if user passed alias e.g. "slide up", "crossfade", "flip in", "bubbles"
   const animMap = {
     "slide up": "slide",
     slide: "slide",
@@ -1281,11 +1336,25 @@ async function executeRenderPipeline(
     flip: "flip",
     pop: "pop",
     bounce: "bounce",
+    zoom: "zoom",
+    glitch: "glitch",
+    typewriter: "typewriter",
+    blur: "blur",
+    glow: "glow",
+    swing: "swing",
+    bubbles: "bubbles",
+    droplets: "bubbles",
+    "dropping bubbles": "bubbles",
+    "bubbles drop": "bubbles",
+    sparkles: "sparkles",
+    stars: "sparkles",
+    snow: "snow",
+    rain: "rain",
   };
   const animationKey =
     animMap[String(options.animation || "").toLowerCase()] ||
     options.animation ||
-    "pop";
+    "fade";
 
   // 2. Generate ASS Subtitle File
   job.message = "Generating synchronized subtitle animations...";
@@ -1295,7 +1364,7 @@ async function executeRenderPipeline(
     lines,
     fontFamily: options.fontFamily || "Edo",
     fontSize: Math.min(170, Math.max(150, Number(options.fontSize) || 150)),
-    fontWeight: options.fontWeight || "Bold",
+    fontWeight: options.fontWeight || "Regular",
     primaryColor: options.fontColor || "#FFFFFF",
     outlineColor: options.outlineColor || "#000000",
     outlineWidth:
@@ -1631,6 +1700,7 @@ function getQueueSnapshot() {
       lyricsBlur: j.lyricsBlur !== undefined ? j.lyricsBlur : 21,
       lyricsSpread: j.lyricsSpread !== undefined ? j.lyricsSpread : 0,
       lyricFontSize: Math.min(170, Math.max(150, Number(j.lyricFontSize) || 150)),
+      animation: j.animation || "crossfade",
       createdAt: j.createdAt,
     })),
     queueLength: automationQueue.waitingQueue.length,
@@ -2015,6 +2085,7 @@ app.post("/api/admin/process-song", async (req, res) => {
     thumbnailSpread,
     lyricsBlur,
     lyricsSpread,
+    animation: reqAnimation,
   } = req.body;
 
   if (!inputSongId && (!query || !query.trim())) {
@@ -2156,7 +2227,7 @@ app.post("/api/admin/process-song", async (req, res) => {
         : "Edo";
 
     const lyricFontSize = Math.min(170, Math.max(150, Number(fontSize) || 150));
-    const animation = getRandomElement(AUTOMATION_ANIMATIONS);
+    const animation = reqAnimation ? String(reqAnimation).trim() : "crossfade";
 
     const jobId = `auto_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const isBusy = Boolean(automationQueue.activeJob);
@@ -2323,6 +2394,7 @@ app.put("/api/admin/queue/:id", (req, res) => {
     lyricsBlur,
     lyricsSpread,
     fontSize,
+    animation,
   } = req.body;
 
   if (songTitle && songTitle.trim()) job.songTitle = songTitle.trim();
@@ -2341,6 +2413,7 @@ app.put("/api/admin/queue/:id", (req, res) => {
   if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(50, Number(lyricsBlur)));
   if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
   if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
+  if (animation && String(animation).trim()) job.animation = String(animation).trim();
 
   console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
 
@@ -2365,6 +2438,7 @@ app.put("/api/admin/queue/:id", (req, res) => {
       lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 21,
       lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
       lyricFontSize: job.lyricFontSize,
+      animation: job.animation,
     },
     queue: getQueueSnapshot(),
   });
@@ -2401,6 +2475,7 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
     lyricsBlur,
     lyricsSpread,
     fontSize,
+    animation,
   } = req.body;
 
   if (songTitle && songTitle.trim()) job.songTitle = songTitle.trim();
@@ -2419,6 +2494,7 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
   if (lyricsBlur !== undefined && !isNaN(Number(lyricsBlur))) job.lyricsBlur = Math.max(0, Math.min(50, Number(lyricsBlur)));
   if (lyricsSpread !== undefined && !isNaN(Number(lyricsSpread))) job.lyricsSpread = Math.max(0, Math.min(20, Number(lyricsSpread)));
   if (fontSize && !isNaN(Number(fontSize))) job.lyricFontSize = Math.min(170, Math.max(150, Number(fontSize)));
+  if (animation && String(animation).trim()) job.animation = String(animation).trim();
 
   console.log(`[queue] Admin updated parameters for queued job ${id} ("${job.songTitle}")`);
 
@@ -2443,6 +2519,7 @@ app.post("/api/admin/queue/:id/edit", (req, res) => {
       lyricsBlur: job.lyricsBlur !== undefined ? job.lyricsBlur : 21,
       lyricsSpread: job.lyricsSpread !== undefined ? job.lyricsSpread : 0,
       lyricFontSize: job.lyricFontSize,
+      animation: job.animation,
     },
     queue: getQueueSnapshot(),
   });

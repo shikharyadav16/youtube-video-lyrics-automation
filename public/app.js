@@ -19,7 +19,7 @@ const state = {
   bgMotion: "zoom", // "zoom", "static", "pulse"
   fontFamily: "Edo",
   fontSize: 150,
-  fontWeight: "800",
+  fontWeight: "400",
   textColor: "#FFFFFF",
   outlineColor: "#000000",
   outlineWidth: 0,
@@ -27,7 +27,7 @@ const state = {
   shadowBlur: 21,
   shadowSpread: 0,
   shadowColor: "#000000",
-  animation: "pop", // "pop", "slide", "fade", "bounce", etc.
+  animation: "fade", // "fade", "bubbles", "sparkles", "snow", "rain", "pop", etc.
   linesMode: "single", // "single", "duo"
   lyricDelay: -0.3, // Delay in lyrics playing (-3.0 to 3.0s, default -0.3)
   fps: 60,
@@ -78,6 +78,7 @@ const dom = {
   stageCanvas: document.getElementById("stageCanvas"),
   stageBgLayer: document.getElementById("stageBgLayer"),
   stageDarkOverlay: document.getElementById("stageDarkOverlay"),
+  stageParticlesLayer: document.getElementById("stageParticlesLayer"),
   stageLyricActive: document.getElementById("stageLyricActive"),
   stageLyricText: document.getElementById("stageLyricText"),
   stageLyricUpcoming: document.getElementById("stageLyricUpcoming"),
@@ -983,9 +984,13 @@ if (dom.btnResetDelay) {
 
 // Animation Descriptions
 const animDescriptions = {
+  fade: "Crossfade: Cinematic smooth opacity crossfade (Default)",
+  bubbles: "Bubbles: Transparent floating bubbles gently drifting with smooth lyric fade",
+  sparkles: "Sparkles: Radiant ambient sparkles shining around glowing lyrics",
+  snow: "Snow: Soft ambient snowfall drifting gracefully",
+  rain: "Rain: Gentle transparent raindrops falling smoothly",
   pop: "Pop: Smoothly scales from 92% with subtle fade",
   slide: "Slide Up: Rises gracefully into the active position",
-  fade: "Crossfade: Cinematic smooth opacity crossfade",
   bounce: "Bounce: Energetic elastic overshoot and settle",
   zoom: "Zoom In: Dynamic punch scaling in from 130%",
   glitch: "Glitch: Cyberpunk digital jitter and skew flickers",
@@ -995,6 +1000,55 @@ const animDescriptions = {
   flip: "Flip In: 3D perspective fold-down rotation",
   swing: "Swing: Pendulum oscillation that gently settles",
 };
+
+// Ambient Falling Particle Generator (Bubbles, Sparkles, Snow, Rain)
+function updateAmbientParticles() {
+  if (!dom.stageParticlesLayer) return;
+  dom.stageParticlesLayer.innerHTML = "";
+  const anim = state.animation;
+  if (!["bubbles", "sparkles", "snow", "rain"].includes(anim)) return;
+
+  const count = anim === "bubbles" ? 22 : anim === "sparkles" ? 26 : anim === "snow" ? 35 : 45;
+  const frag = document.createDocumentFragment();
+
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    const left = Math.random() * 96 + 2;
+    const dur = anim === "bubbles" ? (4 + Math.random() * 5)
+              : anim === "sparkles" ? (3 + Math.random() * 4)
+              : anim === "snow" ? (4.5 + Math.random() * 6)
+              : (0.7 + Math.random() * 0.8);
+    const delay = Math.random() * dur;
+
+    if (anim === "bubbles") {
+      el.className = "ambient-particle-bubble";
+      const size = Math.floor(10 + Math.random() * 26);
+      el.style.width = `${size}px`;
+      el.style.height = `${size}px`;
+    } else if (anim === "sparkles") {
+      el.className = "ambient-particle-sparkle";
+      const size = Math.floor(8 + Math.random() * 12);
+      el.style.width = `${size}px`;
+      el.style.height = `${size}px`;
+    } else if (anim === "snow") {
+      el.className = "ambient-particle-snow";
+      const size = Math.floor(4 + Math.random() * 9);
+      el.style.width = `${size}px`;
+      el.style.height = `${size}px`;
+    } else if (anim === "rain") {
+      el.className = "ambient-particle-rain";
+      const h = Math.floor(14 + Math.random() * 18);
+      el.style.height = `${h}px`;
+    }
+
+    el.style.left = `${left}%`;
+    el.style.animationDuration = `${dur}s`;
+    el.style.animationDelay = `-${delay}s`;
+    frag.appendChild(el);
+  }
+
+  dom.stageParticlesLayer.appendChild(frag);
+}
 
 // 3D Audio Sound Descriptions
 const sound3dHints = {
@@ -1019,6 +1073,7 @@ dom.animPills.addEventListener("click", (e) => {
   dom.stageLyricActive.className = "stage-lyric-active";
   void dom.stageLyricActive.offsetWidth;
   dom.stageLyricActive.classList.add(`lyric-anim-${state.animation}`);
+  updateAmbientParticles();
 });
 
 // Lines Mode Pills (Single vs Duo)
@@ -1612,6 +1667,7 @@ function escapeHtml(str) {
 window.addEventListener("DOMContentLoaded", async () => {
   await loadBackgrounds();
   applyVisualStyles();
+  updateAmbientParticles();
   // Auto search initial popular query
   searchSongs("Millionaire");
 });

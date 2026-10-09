@@ -99,11 +99,21 @@ export const SINGER_FONTS = [
 ];
 
 export const AUTOMATION_ANIMATIONS = [
+  "crossfade",
+  "bubbles",
+  "sparkles",
+  "snow",
+  "rain",
   "pop",
   "slide up",
-  "crossfade",
-  "flip in",
   "bounce",
+  "zoom",
+  "glitch",
+  "typewriter",
+  "blur",
+  "glow",
+  "flip in",
+  "swing",
 ];
 
 export function getRandomElement(arr) {
@@ -229,14 +239,17 @@ export function resolveFontForText(fontName, text) {
  * - Auto-shrink to fit within 90% width (1728px), keeping 1–2 lines max
  * - Rule: prioritize keeping the title large; only reduce font size when it exceeds width
  */
-export function computeThumbnailTitleLayout(title, targetWidth = 1728) {
+export function computeThumbnailTitleLayout(title, targetWidth = 1900) {
   const cleanTitle = (title || "").trim();
   const words = cleanTitle.split(/\s+/).filter(Boolean);
   const nominalSize = 280; // 280px default for 1080p canvas
+  const maxWidth99 = Math.floor(1920 * 0.99); // 1900px (99% of 1920)
 
-  // Check if title fits on 1 line within 90% width at nominal size
+  // Single line measurement at nominal size
   const singleLineWidth = estimateTextWidth(cleanTitle, nominalSize);
-  if (singleLineWidth <= targetWidth && words.length <= 3) {
+
+  // Requirement: Do NOT add song title to second line until it is greater than 99% of thumbnail width!
+  if (singleLineWidth <= maxWidth99) {
     return {
       fontSize: nominalSize,
       lines: [cleanTitle],
@@ -245,10 +258,10 @@ export function computeThumbnailTitleLayout(title, targetWidth = 1728) {
     };
   }
 
-  // If short (<= 4 words) and can fit on 1 line with font size >= 220px, keep 1 line
+  // If at nominal size it exceeds 99%, auto-scale down (to at least 160px) to keep on 1 line:
   const singleLineUnits = estimateTextWidth(cleanTitle, 1);
-  const singleLineSize = Math.floor(targetWidth / Math.max(1, singleLineUnits));
-  if (words.length <= 4 && singleLineSize >= 220) {
+  const singleLineSize = Math.floor(maxWidth99 / Math.max(1, singleLineUnits));
+  if (singleLineSize >= 160) {
     return {
       fontSize: Math.min(nominalSize, singleLineSize),
       lines: [cleanTitle],
@@ -257,7 +270,7 @@ export function computeThumbnailTitleLayout(title, targetWidth = 1728) {
     };
   }
 
-  // Wrap into 2 balanced lines
+  // ONLY wrap into 2 balanced lines when the title text strictly exceeds 99% of thumbnail width even scaled down:
   if (words.length >= 2) {
     let bestSplitIndex = 1;
     let minMaxUnits = Infinity;
@@ -277,9 +290,9 @@ export function computeThumbnailTitleLayout(title, targetWidth = 1728) {
     const maxLineUnits = minMaxUnits;
 
     let fontSize = nominalSize;
-    if (maxLineUnits * nominalSize > targetWidth) {
-      fontSize = Math.floor(targetWidth / Math.max(1, maxLineUnits));
-      fontSize = Math.max(100, Math.min(nominalSize, fontSize));
+    if (maxLineUnits * nominalSize > maxWidth99) {
+      fontSize = Math.floor(maxWidth99 / Math.max(1, maxLineUnits));
+      fontSize = Math.max(80, Math.min(nominalSize, fontSize));
     }
 
     return {
@@ -290,10 +303,7 @@ export function computeThumbnailTitleLayout(title, targetWidth = 1728) {
     };
   }
 
-  let fontSize = nominalSize;
-  if (singleLineUnits * nominalSize > targetWidth) {
-    fontSize = Math.max(100, Math.floor(targetWidth / Math.max(1, singleLineUnits)));
-  }
+  let fontSize = Math.max(80, Math.min(nominalSize, singleLineSize));
   return {
     fontSize,
     lines: [cleanTitle],
@@ -367,7 +377,7 @@ export async function generateThumbnail({
     throw new Error(`Background file not found: ${bgPath}`);
   }
 
-  const titleInfo = computeThumbnailTitleLayout(songTitle, 1728);
+  const titleInfo = computeThumbnailTitleLayout(songTitle, Math.floor(1920 * 0.99));
   const finalTitleSize = titleFontSize && !isNaN(Number(titleFontSize))
     ? Math.max(40, Math.min(500, Number(titleFontSize)))
     : (titleInfo.fontSize || 280);

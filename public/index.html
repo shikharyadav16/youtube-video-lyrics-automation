@@ -151,6 +151,9 @@
           <!-- Vignette Effect Layer -->
           <div class="stage-vignette" id="stageVignette"></div>
 
+          <!-- Ambient Falling Particle Layer (Bubbles / Sparkles / Snow / Rain) -->
+          <div class="stage-particles-layer" id="stageParticlesLayer"></div>
+
           <!-- Lyrics Display Stage -->
           <div class="stage-lyrics-wrapper" id="stageLyricsWrapper">
             <!-- Active Lyric Line -->
@@ -380,13 +383,13 @@
           <div class="control-row">
             <div class="control-label-val">
               <span>Font Weight</span>
-              <span class="control-badge" id="valFontWeight">800 (Heavy)</span>
+              <span class="control-badge" id="valFontWeight">400 (Regular)</span>
             </div>
             <select id="selectFontWeight" class="select-input">
-              <option value="400">400 - Regular</option>
+              <option value="400" selected>400 - Regular (Default)</option>
               <option value="600">600 - Semi-Bold</option>
               <option value="700">700 - Bold</option>
-              <option value="800" selected>800 - Extra Bold (Recommended)</option>
+              <option value="800">800 - Extra Bold</option>
               <option value="900">900 - Black (Ultra)</option>
             </select>
           </div>
@@ -480,16 +483,28 @@
 
           <!-- Animation Presets -->
           <div class="control-row">
-            <label>Transition Style</label>
+            <label>Transition Style &amp; Visual Effect</label>
             <div class="pill-group" id="animPills">
-              <button class="pill active" data-anim="pop">
+              <button class="pill active" data-anim="fade">
+                <i class="fa-solid fa-droplet"></i> Crossfade
+              </button>
+              <button class="pill" data-anim="bubbles">
+                <i class="fa-solid fa-soap"></i> Bubbles
+              </button>
+              <button class="pill" data-anim="sparkles">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Sparkles
+              </button>
+              <button class="pill" data-anim="snow">
+                <i class="fa-solid fa-snowflake"></i> Snow
+              </button>
+              <button class="pill" data-anim="rain">
+                <i class="fa-solid fa-cloud-rain"></i> Rain
+              </button>
+              <button class="pill" data-anim="pop">
                 <i class="fa-solid fa-burst"></i> Pop
               </button>
               <button class="pill" data-anim="slide">
                 <i class="fa-solid fa-arrow-up"></i> Slide Up
-              </button>
-              <button class="pill" data-anim="fade">
-                <i class="fa-solid fa-droplet"></i> Crossfade
               </button>
               <button class="pill" data-anim="bounce">
                 <i class="fa-solid fa-basketball"></i> Bounce
@@ -516,7 +531,7 @@
                 <i class="fa-solid fa-anchor"></i> Swing
               </button>
             </div>
-            <span class="control-hint" id="animHint">Pop: Smoothly scales from 92% with subtle fade</span>
+            <span class="control-hint" id="animHint">Crossfade: Cinematic smooth opacity crossfade (Default)</span>
           </div>
 
           <!-- Lines Visible Mode -->
