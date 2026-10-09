@@ -984,14 +984,30 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Style: Default,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
 Style: Upcoming,${assFont},${Math.round(finalFontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
 Style: Particle,Arial,24,&H80FFFFFF&,&H000000FF,&H40FFFFFF&,&H00000000&,0,0,0,0,100,100,0,0,1,1,0,5,10,10,10,1
+Style: WatermarkPill,Arial,22,&H00FFFFFF&,&H000000FF,&H00000000&,&H80000000&,1,0,0,0,100,100,1,0,1,0,0,1,60,60,45,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
 
-  if (!lines || !lines.length) return ass;
-
   const delayMs = Math.round(Number(lyricDelay || 0) * 1000);
+
+  // Elegant, compact YouTube Subscribe watermark badge in bottom-left corner
+  const totalVideoEndMs = Math.max(
+    Number(songDurationMs) || 180000,
+    lines && lines.length ? (lines[lines.length - 1]?.timeMs || 0) + delayMs + 6000 : 180000
+  );
+  const totalStartStr = formatAssTime(0);
+  const totalEndStr = formatAssTime(totalVideoEndMs);
+
+  // 1. YouTube red rounded icon pill (34x24px, subtle fade in/out)
+  ass += `Dialogue: 2,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(60,1054)\\fad(800,800)}{\\1c&H2828FF&\\p1}m 6 0 l 28 0 b 34 0 34 6 34 6 l 34 18 b 34 24 28 24 28 24 l 6 24 b 0 24 0 18 0 18 l 0 6 b 0 0 6 0 6 0{\\p0}\n`;
+  // 2. White play triangle inside pill
+  ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(73,1048)\\fad(800,800)}{\\1c&HFFFFFF&\\p1}m 0 0 l 9 6 l 0 12{\\p0}\n`;
+  // 3. Clean, subtle "Subscribe" text next to the icon
+  ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(105,1053)\\fad(800,800)}{\\1c&HFFFFFF&\\b1\\fs20\\fsp1\\shad1\\4c&H80000000&}Subscribe\n`;
+
+  if (!lines || !lines.length) return ass;
 
   for (let i = 0; i < lines.length; i++) {
     const cur = lines[i];
