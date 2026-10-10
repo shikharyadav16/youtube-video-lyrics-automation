@@ -598,6 +598,11 @@ app.use("/assets/background", express.static(DIRS.backgrounds));
 app.use("/output", express.static(DIRS.output));
 app.use(express.static(DIRS.public, { etag: false, maxAge: 0 }));
 
+// Dedicated YouTube Shorts / Vertical Video Studio Route
+app.get("/shorts", (_req, res) => {
+  res.sendFile(path.join(DIRS.public, "shorts.html"));
+});
+
 /* ------------------------------------------------------------------ */
 /*  API 1: Song Search                                                */
 /* ------------------------------------------------------------------ */
@@ -927,6 +932,7 @@ function generateAssSubtitles({
   fontSize = 150,
   fontWeight = "Regular",
   primaryColor = "#FFFFFF",
+  highlightColor = "#00F0FF",
   outlineColor = "#000000",
   outlineWidth = 0,
   shadowColor = "#000000",
@@ -937,7 +943,15 @@ function generateAssSubtitles({
   songDurationMs = 180000,
   linesMode = "single", // "single" or "duo"
   lyricDelay = 0.0,
+  aspectRatio = "16:9",
+  width,
+  height,
+  lyricsLayout = "center", // "center" or "scroll"
 }) {
+  const isShorts = aspectRatio === "9:16" || lyricsLayout === "scroll";
+  const targetW = width ? Number(width) : (isShorts ? 1080 : 1920);
+  const targetH = height ? Number(height) : (isShorts ? 1920 : 1080);
+
   let sampleLyrics = "";
   if (Array.isArray(lines) && lines.length) {
     for (let i = 0; i < Math.min(25, lines.length); i++) {
@@ -951,8 +965,10 @@ function generateAssSubtitles({
   const assShadow = hexToAssColor(shadowColor, 0.4);
   const isBold = fontWeight === "Bold" || Number(fontWeight) >= 700 ? 1 : 0;
 
-  // Clamped fontSize between 150 and 170
-  const finalFontSize = Math.min(170, Math.max(150, Number(fontSize) || 150));
+  // Clamped fontSize: For 9:16 Shorts default is 56px (range 38-75); For 16:9 default is 150px (range 150-170)
+  const finalFontSize = isShorts
+    ? (fontSize ? Math.min(85, Math.max(38, Number(fontSize))) : 56)
+    : Math.min(170, Math.max(150, Number(fontSize) || 150));
 
   // Outline width = shadowSpread if specified, else outlineWidth
   const effectiveOutline =
@@ -960,7 +976,7 @@ function generateAssSubtitles({
       ? Number(shadowSpread)
       : (outlineWidth !== undefined && !isNaN(Number(outlineWidth))
         ? Math.max(0, Number(outlineWidth))
-        : 0);
+        : (isShorts ? 2 : 0));
   const effectiveShadow =
     shadowDepth !== undefined && !isNaN(Number(shadowDepth))
       ? Math.max(0, Number(shadowDepth))
@@ -971,21 +987,33 @@ function generateAssSubtitles({
       : 21;
 
   let ass = `[Script Info]
-Title: Spark Style Lyric Video
+Title: Spark Style ${isShorts ? "Shorts" : "16:9"} Lyric Video
 ScriptType: v4.00+
 WrapStyle: 0
 ScaledBorderAndShadow: yes
 YCbCr Matrix: TV.601
-PlayResX: 1920
-PlayResY: 1080
+PlayResX: ${targetW}
+PlayResY: ${targetH}
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
-Style: Upcoming,${assFont},${Math.round(finalFontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1
-Style: Particle,Arial,24,&H80FFFFFF&,&H000000FF,&H40FFFFFF&,&H00000000&,0,0,0,0,100,100,0,0,1,1,0,5,10,10,10,1
-Style: WatermarkPill,Arial,22,&H00FFFFFF&,&H000000FF,&H00000000&,&H80000000&,1,0,0,0,100,100,1,0,1,0,0,1,60,60,45,1
+`;
 
+  if (isShorts) {
+    // 9:16 Shorts Vertical Styles: Active center line + dimmed context lines
+    const dimFontSize = Math.round(finalFontSize * 0.74);
+    ass += `Style: ShortsActive,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},&H90000000&,${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},2,5,70,70,60,1\n`;
+    ass += `Style: ShortsDim,${assFont},${dimFontSize},&H85CCCCCC&,&H000000FF,${assOutline},&H90000000&,0,0,0,0,100,100,0,0,1,${effectiveOutline},2,5,70,70,60,1\n`;
+    ass += `Style: WatermarkShorts,Arial,20,&H00FFFFFF&,&H000000FF,&H00000000&,&H80000000&,1,0,0,0,100,100,1,0,1,0,0,1,40,40,40,1\n`;
+  } else {
+    // Standard 16:9 Styles
+    ass += `Style: Default,${assFont},${finalFontSize},${assPrimary},&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1\n`;
+    ass += `Style: Upcoming,${assFont},${Math.round(finalFontSize * 0.7)},&H88FFFFFF,&H000000FF,${assOutline},${assShadow},${isBold},0,0,0,100,100,0,0,1,${effectiveOutline},${effectiveShadow},5,100,100,100,1\n`;
+    ass += `Style: Particle,Arial,24,&H80FFFFFF&,&H000000FF,&H40FFFFFF&,&H00000000&,0,0,0,0,100,100,0,0,1,1,0,5,10,10,10,1\n`;
+    ass += `Style: WatermarkPill,Arial,22,&H00FFFFFF&,&H000000FF,&H00000000&,&H80000000&,1,0,0,0,100,100,1,0,1,0,0,1,60,60,45,1\n`;
+  }
+
+  ass += `
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
@@ -1000,12 +1028,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const totalStartStr = formatAssTime(0);
   const totalEndStr = formatAssTime(totalVideoEndMs);
 
-  // 1. YouTube red rounded icon pill (34x24px, subtle fade in/out)
-  ass += `Dialogue: 2,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(60,1054)\\fad(800,800)}{\\1c&H2828FF&\\p1}m 6 0 l 28 0 b 34 0 34 6 34 6 l 34 18 b 34 24 28 24 28 24 l 6 24 b 0 24 0 18 0 18 l 0 6 b 0 0 6 0 6 0{\\p0}\n`;
-  // 2. White play triangle inside pill
-  ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(73,1048)\\fad(800,800)}{\\1c&HFFFFFF&\\p1}m 0 0 l 9 6 l 0 12{\\p0}\n`;
-  // 3. Clean, subtle "Subscribe" text next to the icon
-  ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(105,1053)\\fad(800,800)}{\\1c&HFFFFFF&\\b1\\fs20\\fsp1\\shad1\\4c&H80000000&}Subscribe\n`;
+  if (isShorts) {
+    const wmY = targetH - 46;
+    ass += `Dialogue: 2,${totalStartStr},${totalEndStr},WatermarkShorts,,0,0,0,,{\\an1\\pos(40,${wmY})\\fad(800,800)}{\\1c&H2828FF&\\p1}m 6 0 l 26 0 b 32 0 32 6 32 6 l 32 16 b 32 22 26 22 26 22 l 6 22 b 0 22 0 16 0 16 l 0 6 b 0 0 6 0 6 0{\\p0}\n`;
+    ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkShorts,,0,0,0,,{\\an1\\pos(52,${wmY - 5})\\fad(800,800)}{\\1c&HFFFFFF&\\p1}m 0 0 l 8 5 l 0 10{\\p0}\n`;
+    ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkShorts,,0,0,0,,{\\an1\\pos(82,${wmY - 1})\\fad(800,800)}{\\1c&HFFFFFF&\\b1\\fs18\\fsp1\\shad1\\4c&H80000000&}Subscribe\n`;
+  } else {
+    ass += `Dialogue: 2,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(60,1054)\\fad(800,800)}{\\1c&H2828FF&\\p1}m 6 0 l 28 0 b 34 0 34 6 34 6 l 34 18 b 34 24 28 24 28 24 l 6 24 b 0 24 0 18 0 18 l 0 6 b 0 0 6 0 6 0{\\p0}\n`;
+    ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(73,1048)\\fad(800,800)}{\\1c&HFFFFFF&\\p1}m 0 0 l 9 6 l 0 12{\\p0}\n`;
+    ass += `Dialogue: 3,${totalStartStr},${totalEndStr},WatermarkPill,,0,0,0,,{\\an1\\pos(105,1053)\\fad(800,800)}{\\1c&HFFFFFF&\\b1\\fs20\\fsp1\\shad1\\4c&H80000000&}Subscribe\n`;
+  }
 
   if (!lines || !lines.length) return ass;
 
@@ -1014,18 +1046,61 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     const next = lines[i + 1];
 
     const startMs = Math.max(0, cur.timeMs + delayMs);
-    // Line stays until next line starts, or for 4.5 seconds if at end
     const rawEndMs = next ? Math.max(0, next.timeMs + delayMs) : startMs + 4500;
-    // Leave a small breath between lines
     const endMs = Math.max(startMs + 500, rawEndMs);
 
     const startStr = formatAssTime(startMs);
     const endStr = formatAssTime(endMs);
     const durationMs = endMs - startMs;
+    const fadeMs = Math.min(200, Math.floor(durationMs * 0.18));
 
-    const fadeMs = Math.min(220, Math.floor(durationMs * 0.22));
+    let textClean = String(cur.text || "")
+      .replace(/\{/g, "\\{")
+      .replace(/\}/g, "\\}")
+      .replace(/\r?\n/g, "\\N")
+      .trim();
 
-    // Decorative particles for dynamic visual effects
+    if (!textClean) continue;
+
+    if (isShorts) {
+      // 9:16 Shorts Continuous Sliding Reel:
+      // Active line centered at (targetW/2, targetH/2).
+      // Previous line sits above at (targetW/2, targetH/2 - 140).
+      // Next line sits below at (targetW/2, targetH/2 + 140).
+      const centerX = Math.round(targetW / 2);
+      const centerY = Math.round(targetH / 2);
+      const rowGap = Math.max(110, Math.round(finalFontSize * 2.1));
+
+      // 1. Previous line dimmed above
+      if (i > 0 && lines[i - 1]?.text) {
+        let prevClean = String(lines[i - 1].text)
+          .replace(/\{/g, "\\{")
+          .replace(/\}/g, "\\}")
+          .replace(/\r?\n/g, "\\N")
+          .trim();
+        if (prevClean) {
+          ass += `Dialogue: 1,${startStr},${endStr},ShortsDim,,0,0,0,,{\\an5\\pos(${centerX},${centerY - rowGap})\\fad(${fadeMs},${fadeMs})}${prevClean}\n`;
+        }
+      }
+
+      // 2. Active line in center highlighted
+      ass += `Dialogue: 2,${startStr},${endStr},ShortsActive,,0,0,0,,{\\an5\\pos(${centerX},${centerY})\\fad(${fadeMs},${fadeMs})}${textClean}\n`;
+
+      // 3. Upcoming line dimmed below
+      if (next && next.text) {
+        let nextClean = String(next.text)
+          .replace(/\{/g, "\\{")
+          .replace(/\}/g, "\\}")
+          .replace(/\r?\n/g, "\\N")
+          .trim();
+        if (nextClean) {
+          ass += `Dialogue: 1,${startStr},${endStr},ShortsDim,,0,0,0,,{\\an5\\pos(${centerX},${centerY + rowGap})\\fad(${fadeMs},${fadeMs})}${nextClean}\n`;
+        }
+      }
+      continue;
+    }
+
+    // Decorative particles for dynamic visual effects in 16:9
     if (animation === "bubbles") {
       const bubbleSeeds = [
         { x: 380, y1: 120, x2: 410, y2: 780, fs: 24, alpha: "D8", sym: "●" },
@@ -1071,7 +1146,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       }
     }
 
-    // Animation tags - Ensure initial transform tags are placed BEFORE \\t() so libass doesn't overwrite
+    // Animation tags for 16:9
     let animTags = "";
     if (animation === "pop") {
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\fscx92\\fscy92\\t(0,${Math.min(220, durationMs)},\\fscx100\\fscy100)`;
@@ -1102,19 +1177,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     } else if (animation === "swing") {
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})\\t(0,120,\\frz-8)\\t(120,260,\\frz5)\\t(260,380,\\frz-2)\\t(380,460,\\frz0)`;
     } else {
-      // Classic smooth crossfade (fade)
       animTags = `\\an5\\pos(960,540)\\fad(${fadeMs},${fadeMs})`;
     }
 
-    let textClean = String(cur.text || "")
-      .replace(/\{/g, "\\{")
-      .replace(/\}/g, "\\}")
-      .replace(/\r?\n/g, "\\N")
-      .trim();
-
-    if (!textClean) continue;
-
-    // Auto-wrap long lines (greater than 40 chars) at nearest middle space for clean 2-line rendering
+    // Auto-wrap long lines in 16:9
     if (!textClean.includes("\\N") && textClean.length > 40) {
       const words = textClean.split(" ");
       if (words.length > 1) {
@@ -1336,11 +1402,35 @@ async function executeRenderPipeline(
     audioFilePath = tempAudioPath;
   }
 
+  // 1c. Audio Trimming and Lyrics Synchronization
+  const trimStartSec = options.trimStart !== undefined && !isNaN(Number(options.trimStart)) ? Math.max(0, Number(options.trimStart)) : 0;
+  const trimEndSec = options.trimEnd !== undefined && !isNaN(Number(options.trimEnd)) ? Number(options.trimEnd) : 0;
+  const hasTrimming = trimEndSec > trimStartSec;
+
+  let activeLines = lines;
+  if (hasTrimming) {
+    const trimDurationSec = trimEndSec - trimStartSec;
+    songDurationSec = trimDurationSec;
+    const trimStartMs = Math.round(trimStartSec * 1000);
+    const trimDurationMs = Math.round(trimDurationSec * 1000);
+
+    // Shift lyrics so they synchronize frame-perfect with the trimmed audio cut
+    activeLines = (lines || [])
+      .map((l) => ({ ...l, timeMs: l.timeMs - trimStartMs }))
+      .filter((l) => l.timeMs >= -2500 && l.timeMs <= trimDurationMs + 1000)
+      .map((l) => ({ ...l, timeMs: Math.max(0, l.timeMs) }));
+  }
+
   // Estimate duration if unknown
   if (!songDurationSec || songDurationSec < 10) {
-    const lastLyric = lines[lines.length - 1];
+    const lastLyric = activeLines[activeLines.length - 1];
     songDurationSec = Math.max(120, Math.ceil((lastLyric?.timeMs || 60000) / 1000) + 8);
   }
+
+  // Target aspect ratio & dimensions (9:16 vertical shorts default 1080x1920)
+  const isShorts = options.aspectRatio === "9:16" || options.isShorts || options.lyricsLayout === "scroll";
+  const targetW = options.width ? Number(options.width) : (isShorts ? 1080 : 1920);
+  const targetH = options.height ? Number(options.height) : (isShorts ? 1920 : 1080);
 
   // Map transition style if user passed alias e.g. "slide up", "crossfade", "flip in", "bubbles"
   const animMap = {
@@ -1377,18 +1467,21 @@ async function executeRenderPipeline(
   job.percent = 25;
 
   const assContent = generateAssSubtitles({
-    lines,
+    lines: activeLines,
     fontFamily: options.fontFamily || "Edo",
-    fontSize: Math.min(170, Math.max(150, Number(options.fontSize) || 150)),
+    fontSize: isShorts
+      ? (options.fontSize ? Math.min(85, Math.max(38, Number(options.fontSize))) : 56)
+      : Math.min(170, Math.max(150, Number(options.fontSize) || 150)),
     fontWeight: options.fontWeight || "Regular",
     primaryColor: options.fontColor || "#FFFFFF",
+    highlightColor: options.highlightColor || "#00F0FF",
     outlineColor: options.outlineColor || "#000000",
     outlineWidth:
       options.shadowSpread !== undefined && !isNaN(Number(options.shadowSpread))
         ? Number(options.shadowSpread)
         : (options.outlineWidth !== undefined && !isNaN(Number(options.outlineWidth))
           ? Number(options.outlineWidth)
-          : 0),
+          : (isShorts ? 2 : 0)),
     shadowColor: options.shadowColor || "#000000",
     shadowDepth:
       options.shadowDepth !== undefined && !isNaN(Number(options.shadowDepth))
@@ -1406,6 +1499,10 @@ async function executeRenderPipeline(
     linesMode: options.linesMode || "single",
     songDurationMs: songDurationSec * 1000,
     lyricDelay: Number(options.lyricDelay !== undefined ? options.lyricDelay : -0.3),
+    aspectRatio: isShorts ? "9:16" : (options.aspectRatio || "16:9"),
+    width: targetW,
+    height: targetH,
+    lyricsLayout: isShorts ? "scroll" : (options.lyricsLayout || "center"),
   });
 
   const assFilePath = path.join(DIRS.temp, `${jobId}_sub.ass`);
@@ -1416,8 +1513,8 @@ async function executeRenderPipeline(
   const willUseNvenc = ENCODER_INFO.hasNvenc && process.env.VIDEO_ENCODER !== "cpu";
   job.encoderMode = willUseNvenc ? "nvenc" : "cpu";
   job.message = willUseNvenc
-    ? "Encoding 1080p 60fps MP4 video with FFmpeg NVENC (RTX 2050)..."
-    : `Encoding 1080p MP4 video with FFmpeg CPU (libx264 ${ENCODER_INFO.cpuPreset})...`;
+    ? `Encoding ${targetW}x${targetH} 60fps MP4 video with FFmpeg NVENC (RTX 2050)...`
+    : `Encoding ${targetW}x${targetH} MP4 video with FFmpeg CPU (libx264 ${ENCODER_INFO.cpuPreset})...`;
   job.percent = 30;
 
   const outFilename = `lyric_video_${jobId}.mp4`;
@@ -1437,18 +1534,18 @@ async function executeRenderPipeline(
   const relAssPath = path.relative(process.cwd(), assFilePath).replace(/\\/g, "/");
   const relFontsDir = path.relative(process.cwd(), path.join(DIRS.assets, "fonts")).replace(/\\/g, "/");
 
-  let filterComplex = `[0:v]scale=1920:1080:force_original_aspect_ratio=increase,crop=1920:1080`;
+  let filterComplex = `[0:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=increase,crop=${targetW}:${targetH}`;
 
   if (bgBlur > 0) {
     filterComplex += `,boxblur=luma_radius=${bgBlur}:luma_power=2`;
   }
 
   if (bgMotion === "zoom") {
-    filterComplex += `,zoompan=z='min(zoom+0.0003,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1920x1080:fps=${fps}`;
+    filterComplex += `,zoompan=z='min(zoom+0.0003,1.12)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=${targetW}x${targetH}:fps=${fps}`;
   }
 
   if (bgDarkness > 0) {
-    filterComplex += `,drawbox=x=0:y=0:w=1920:h=1080:color=black@${bgDarkness}:t=fill`;
+    filterComplex += `,drawbox=x=0:y=0:w=${targetW}:h=${targetH}:color=black@${bgDarkness}:t=fill`;
   }
 
   filterComplex += `,setpts=PTS-STARTPTS,subtitles='${relAssPath}':fontsdir='${relFontsDir}'[vout]`;
@@ -1494,6 +1591,10 @@ async function executeRenderPipeline(
 
       const audioBitrate = process.env.AUDIO_BITRATE || (useNvenc ? "320k" : (ENCODER_INFO.isFreeTierCpu ? "192k" : "256k"));
 
+      const audioInputArgs = hasTrimming
+        ? ["-ss", String(trimStartSec), "-t", String(trimEndSec - trimStartSec), "-i", audioFilePath]
+        : ["-i", audioFilePath];
+
       const ffmpegArgs = [
         "-y",
         "-loop",
@@ -1502,8 +1603,7 @@ async function executeRenderPipeline(
         String(fps),
         "-i",
         bgPath,
-        "-i",
-        audioFilePath,
+        ...audioInputArgs,
         "-filter_complex",
         filterComplex,
         "-map",

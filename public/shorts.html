@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Spark Shorts Studio — Vertical 9:16 Lyric Video Maker (Reels & TikTok)</title>
+  <meta name="description" content="Create viral 9:16 vertical synchronized lyric videos for YouTube Shorts, Instagram Reels, and TikTok with audio trimming, sliding typography, and 60 FPS NVENC rendering.">
+
+  <!-- Google Fonts: Top 35 Modern Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Bangers&family=Bebas+Neue&family=Black+Ops+One&family=Bungee&family=Caveat:wght@600;700&family=Cinzel:wght@700&family=Comfortaa:wght@700&family=Cormorant+Garamond:wght@700&family=Courgette&family=Indie+Flower&family=Inter:wght@400;500;600;700;800;900&family=Kalam:wght@700&family=Kanit:wght@700;800&family=Lexend:wght@700;800&family=Manrope:wght@700;800&family=Montserrat:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Nunito:wght@700;800;900&family=Oswald:wght@500;700&family=Outfit:wght@400;500;600;700;800&family=Pacifico&family=Permanent+Marker&family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@700;800&family=Poppins:wght@400;500;600;700;800;900&family=Raleway:wght@700;800;900&family=Righteous&family=Rubik+Mono+One&family=Russo+One&family=Satisfy&family=Shadows+Into+Light&family=Space+Grotesk:wght@600;700&family=Syne:wght@700;800&family=Urbanist:wght@700;800&display=swap" rel="stylesheet">
+
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+  <!-- Dedicated Shorts CSS -->
+  <link rel="stylesheet" href="shorts.css?v=1.0">
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header class="shorts-header">
+    <div class="brand">
+      <div class="brand-badge-vertical">9:16</div>
+      <div>
+        <h1 class="brand-title">Spark <span>Shorts</span></h1>
+        <p class="brand-sub">Vertical Reel &amp; TikTok Lyric Studio &bull; 60 FPS Sliding Feed</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <a href="/" class="btn btn-secondary" title="Switch to 16:9 Landscape Studio">
+        <i class="fa-solid fa-desktop"></i> 16:9 Studio
+      </a>
+      <a href="/admin.html" class="btn btn-secondary" title="Open Automation Admin">
+        <i class="fa-solid fa-robot"></i> Automation
+      </a>
+      <button class="btn btn-secondary" id="btnQuickDemo">
+        <i class="fa-solid fa-wand-magic-sparkles"></i> Load Demo Track
+      </button>
+      <button class="btn btn-primary btn-glow" id="btnExportTop">
+        <i class="fa-solid fa-film"></i> Export 9:16 Short
+      </button>
+    </div>
+  </header>
+
+  <!-- Studio Workspace -->
+  <main class="shorts-container">
+
+    <!-- LEFT PANEL: Song Search, Audio Trimmer & Synced Lyrics -->
+    <aside class="panel left-panel">
+      <div class="panel-tabs">
+        <button class="tab-btn active" data-tab="tabSearch">
+          <i class="fa-solid fa-magnifying-glass"></i> Search Songs
+        </button>
+        <button class="tab-btn" data-tab="tabLyrics">
+          <i class="fa-solid fa-music"></i> Lyrics (<span id="lyricsCountBadge">0</span>)
+        </button>
+      </div>
+
+      <!-- Tab 1: Search & Trimmer -->
+      <div class="tab-content active" id="tabSearch">
+        
+        <!-- Search Input -->
+        <div class="search-box-wrapper">
+          <div class="search-input-group">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search song (e.g. Millionaire, Starboy, Kesariya)..." value="Millionaire">
+            <button id="btnSearch" class="btn btn-search">
+              <span>Search</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Active Song Information Card -->
+        <div class="active-song-card" id="activeSongCard" style="display: none;">
+          <img id="activeSongArt" src="" alt="Album Art" class="song-art">
+          <div class="song-details">
+            <div class="active-badge"><span class="pulse-dot"></span> SELECTED TRACK</div>
+            <h3 id="activeSongTitle" class="song-title">Song Title</h3>
+            <p id="activeSongArtist" class="song-artist">Artist Name</p>
+            <div class="song-meta-chips">
+              <span id="activeSongQuality" class="chip chip-gold"><i class="fa-solid fa-bolt"></i> 320kbps</span>
+              <span id="activeSongDuration" class="chip chip-dim">0:00</span>
+              <span id="activeLyricsSource" class="chip chip-cyan"><i class="fa-solid fa-check"></i> Synced</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Audio Trimmer Section -->
+        <div class="trimmer-card" id="trimmerCard">
+          <div class="trimmer-header">
+            <div class="trimmer-title">
+              <i class="fa-solid fa-scissors"></i> Audio Trimmer (Shorts Segment)
+            </div>
+            <div class="trimmer-duration-badge" id="trimmerDurationBadge">
+              Selected: 30.0s
+            </div>
+          </div>
+
+          <!-- Quick Duration Presets -->
+          <div class="trim-presets">
+            <span class="preset-label">Quick Cut:</span>
+            <button type="button" class="preset-btn" data-seconds="15">15s</button>
+            <button type="button" class="preset-btn active" data-seconds="30">30s (Default)</button>
+            <button type="button" class="preset-btn" data-seconds="60">60s</button>
+            <button type="button" class="preset-btn" data-seconds="full">Full Track</button>
+          </div>
+
+          <!-- Interactive Visual Trimmer Bar -->
+          <div class="trim-track-container" id="trimTrackContainer">
+            <div class="trim-track-bg"></div>
+            <div class="trim-range-highlight" id="trimRangeHighlight"></div>
+            <div class="trim-playhead" id="trimPlayhead"></div>
+            <!-- Range Sliders (dual handle) -->
+            <input type="range" id="sliderTrimStart" class="trim-range-slider start-slider" min="0" max="100" step="0.1" value="0">
+            <input type="range" id="sliderTrimEnd" class="trim-range-slider end-slider" min="0" max="100" step="0.1" value="30">
+          </div>
+
+          <!-- Precise Timestamp Inputs -->
+          <div class="trim-inputs-row">
+            <div class="trim-input-group">
+              <label for="inputTrimStart">Start Time (sec):</label>
+              <div class="input-with-stepper">
+                <button type="button" class="btn-step" id="btnStartMinus"><i class="fa-solid fa-minus"></i></button>
+                <input type="number" id="inputTrimStart" min="0" step="0.5" value="0.0">
+                <button type="button" class="btn-step" id="btnStartPlus"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+
+            <div class="trim-play-segment">
+              <button type="button" class="btn-play-trim" id="btnPreviewTrim" title="Play only trimmed segment">
+                <i class="fa-solid fa-play" id="previewTrimIcon"></i> Preview Cut
+              </button>
+            </div>
+
+            <div class="trim-input-group">
+              <label for="inputTrimEnd">End Time (sec):</label>
+              <div class="input-with-stepper">
+                <button type="button" class="btn-step" id="btnEndMinus"><i class="fa-solid fa-minus"></i></button>
+                <input type="number" id="inputTrimEnd" min="1" step="0.5" value="30.0">
+                <button type="button" class="btn-step" id="btnEndPlus"><i class="fa-solid fa-plus"></i></button>
+              </div>
+            </div>
+          </div>
+          <div class="trim-note">
+            <i class="fa-solid fa-circle-info"></i> Trimmed audio cuts frame-perfect and lyrics sync will automatically shift to 0.0s.
+          </div>
+        </div>
+
+        <!-- Search Results List -->
+        <div class="results-header">
+          <span id="resultsCount">Search JioSaavn songs:</span>
+          <span class="results-sub">Click song to load audio &amp; sync</span>
+        </div>
+        <div class="song-list" id="searchResultsList">
+          <div class="empty-state">
+            <i class="fa-solid fa-compact-disc fa-spin-pulse"></i>
+            <p>Type a song name above or click Search to find tracks</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 2: Synced Lyrics View & Adjuster -->
+      <div class="tab-content" id="tabLyrics">
+        <div class="lyrics-toolbar">
+          <span class="toolbar-title"><i class="fa-solid fa-list-ol"></i> Lyrics Feed Timestamps</span>
+          <div class="toolbar-actions">
+            <button class="btn btn-xs btn-secondary" id="btnToggleLrcRaw">
+              <i class="fa-solid fa-code"></i> Edit Raw LRC
+            </button>
+          </div>
+        </div>
+
+        <!-- Raw LRC Textarea Modal/View -->
+        <div class="raw-lrc-wrapper" id="rawLrcContainer" style="display: none;">
+          <textarea id="rawLrcText" placeholder="[00:12.34] Paste your LRC timestamps here..."></textarea>
+          <div class="raw-lrc-buttons">
+            <button id="btnApplyRawLrc" class="btn btn-sm btn-primary">Apply LRC</button>
+            <button id="btnCancelRawLrc" class="btn btn-sm btn-secondary">Cancel</button>
+          </div>
+        </div>
+
+        <!-- Lyrics List Items -->
+        <div class="lyrics-timeline-list" id="lyricsTimeline">
+          <div class="empty-state">
+            <i class="fa-solid fa-music"></i>
+            <p>Select a track to inspect synchronized lyrics timestamps</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CENTER COLUMN: 9:16 Vertical Phone Stage & Playback -->
+    <section class="stage-section">
+      <div class="stage-container-shorts">
+        
+        <!-- Vertical Phone Viewport (9:16 Aspect Ratio) -->
+        <div class="phone-mockup" id="phoneMockup">
+          <div class="phone-notch">
+            <span class="phone-speaker"></span>
+            <span class="phone-camera"></span>
+          </div>
+
+          <!-- Video Viewport -->
+          <div class="viewport-916" id="viewport916">
+            <!-- Background Image Layer -->
+            <img id="stageBgLayer" src="/assets/background/1.jpg" alt="Background" class="stage-bg-image">
+
+            <!-- Darkness Overlay Layer -->
+            <div id="stageDarkOverlay" class="stage-dark-overlay"></div>
+
+            <!-- YouTube Shorts UI Watermark Simulation -->
+            <div class="shorts-watermark">
+              <div class="yt-badge">
+                <i class="fa-brands fa-youtube"></i>
+                <span>Subscribe</span>
+              </div>
+            </div>
+
+            <!-- Vertical Sliding Lyrics Reel Container -->
+            <div class="sliding-lyrics-reel" id="slidingLyricsReel">
+              <!-- Previous Line (Dimmed Above) -->
+              <div class="reel-line line-dim line-prev" id="reelLinePrev">
+                <span class="reel-text" id="reelTextPrev"></span>
+              </div>
+
+              <!-- Active Highlight Line (Center Stage) -->
+              <div class="reel-line line-active" id="reelLineActive">
+                <span class="reel-text" id="reelTextActive">Select a track to start</span>
+              </div>
+
+              <!-- Upcoming Line (Dimmed Below) -->
+              <div class="reel-line line-dim line-next" id="reelLineNext">
+                <span class="reel-text" id="reelTextNext"></span>
+              </div>
+            </div>
+
+            <!-- Big Click-To-Play Overlay -->
+            <div class="stage-play-overlay" id="stagePlayOverlay">
+              <div class="play-bubble">
+                <i class="fa-solid fa-play"></i>
+              </div>
+            </div>
+
+            <!-- Shorts Right-Side Social Simulation (Like, Comment, Share) -->
+            <div class="shorts-side-icons">
+              <div class="side-icon-btn"><i class="fa-solid fa-heart"></i><span>Shorts</span></div>
+              <div class="side-icon-btn"><i class="fa-solid fa-music"></i><span>Sound</span></div>
+              <div class="side-icon-btn"><i class="fa-solid fa-share"></i><span>Share</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Master Audio Bar -->
+        <div class="audio-control-bar">
+          <button class="btn-play-main" id="btnPlayPause">
+            <i class="fa-solid fa-play" id="playIcon"></i>
+          </button>
+          
+          <div class="time-display">
+            <span id="currentTimecode">0:00</span>
+            <span class="time-sep">/</span>
+            <span id="totalDurationTimecode">0:00</span>
+          </div>
+
+          <div class="progress-bar-container" id="progressBarContainer">
+            <div class="progress-bar-fill" id="progressBarFill"></div>
+            <div class="progress-trim-indicator" id="progressTrimIndicator"></div>
+          </div>
+
+          <div class="volume-container">
+            <i class="fa-solid fa-volume-high"></i>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.05" value="0.9">
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- RIGHT PANEL: Studio Styling & Render Export -->
+    <aside class="panel right-panel">
+      
+      <!-- Panel Header -->
+      <div class="panel-section-title">
+        <i class="fa-solid fa-sliders"></i> Shorts Studio Controls
+      </div>
+
+      <!-- Section 1: Resolution & Aspect Ratio -->
+      <div class="control-group">
+        <label class="control-label">
+          <span><i class="fa-solid fa-expand"></i> Aspect Ratio &amp; Resolution</span>
+        </label>
+        <select id="selectResolution" class="select-input">
+          <option value="9:16" selected>9:16 Vertical (1080x1920) — Shorts/Reels/TikTok</option>
+          <option value="1:1">1:1 Square (1080x1080) — Instagram Feed</option>
+          <option value="4:5">4:5 Portrait (1080x1350) — Social Carousel</option>
+          <option value="custom">Custom Resolution</option>
+        </select>
+
+        <div class="custom-res-inputs" id="customResInputs" style="display: none;">
+          <div class="res-input-row">
+            <div>
+              <label>Width:</label>
+              <input type="number" id="inputWidth" value="1080" min="360" max="3840" step="2">
+            </div>
+            <span class="x-sep">&times;</span>
+            <div>
+              <label>Height:</label>
+              <input type="number" id="inputHeight" value="1920" min="360" max="3840" step="2">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: Typography & Highlighting -->
+      <div class="control-group">
+        <label class="control-label">
+          <span><i class="fa-solid fa-font"></i> Font Family</span>
+        </label>
+        <select id="selectFontFamily" class="select-input">
+          <optgroup label="Modern & Sans">
+            <option value="Poppins">Poppins (Clean &amp; Viral)</option>
+            <option value="Montserrat">Montserrat (Modern Sans)</option>
+            <option value="Inter">Inter (Ultra Legible)</option>
+            <option value="Outfit">Outfit (Geometric Minimal)</option>
+            <option value="Plus Jakarta Sans">Plus Jakarta Sans</option>
+            <option value="Urbanist">Urbanist</option>
+            <option value="Space Grotesk">Space Grotesk</option>
+          </optgroup>
+          <optgroup label="Bold & Heavy Display">
+            <option value="Edo" selected>Edo (Brush Calligraphy / Aesthetic)</option>
+            <option value="Bangers">Bangers (Comic Pop)</option>
+            <option value="Archivo Black">Archivo Black (Punchy Impact)</option>
+            <option value="Anton">Anton (Bold Tall)</option>
+            <option value="Oswald">Oswald (Narrow Poster)</option>
+            <option value="Bebas Neue">Bebas Neue (Clean Condensed)</option>
+            <option value="Russo One">Russo One</option>
+            <option value="Righteous">Righteous</option>
+          </optgroup>
+          <optgroup label="Cursive & Aesthetic">
+            <option value="Pacifico">Pacifico</option>
+            <option value="Caveat">Caveat</option>
+            <option value="Satisfy">Satisfy</option>
+            <option value="Permanent Marker">Permanent Marker</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <!-- Font Weight & Size -->
+      <div class="control-grid-2">
+        <div class="control-group">
+          <label class="control-label">
+            <span>Font Weight</span>
+          </label>
+          <select id="selectFontWeight" class="select-input">
+            <option value="Regular" selected>Regular (400 - Default)</option>
+            <option value="Medium">Medium (500)</option>
+            <option value="SemiBold">SemiBold (600)</option>
+            <option value="Bold">Bold (700)</option>
+            <option value="ExtraBold">ExtraBold (800)</option>
+            <option value="Black">Black (900)</option>
+          </select>
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <span>Font Size</span>
+            <span class="value-chip" id="valFontSize">56px</span>
+          </div>
+          <input type="range" id="sliderFontSize" min="36" max="85" step="1" value="56">
+        </div>
+      </div>
+
+      <!-- Color Pickers: Text Color & Active Line Highlight -->
+      <div class="control-grid-2">
+        <div class="control-group">
+          <label class="control-label">
+            <span>Active Color</span>
+          </label>
+          <div class="color-picker-wrapper">
+            <input type="color" id="pickerHighlightColor" value="#00f0ff">
+            <span class="color-label" id="labelHighlightColor">#00F0FF</span>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="control-label">
+            <span>Normal Text</span>
+          </label>
+          <div class="color-picker-wrapper">
+            <input type="color" id="pickerTextColor" value="#ffffff">
+            <span class="color-label" id="labelTextColor">#FFFFFF</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: Background & Visual Effects -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span><i class="fa-solid fa-image"></i> Background Image</span>
+          <label class="btn btn-xs btn-secondary btn-upload" title="Upload custom background image">
+            <i class="fa-solid fa-upload"></i> Upload
+            <input type="file" id="bgUploadInput" accept="image/*" style="display: none;">
+          </label>
+        </div>
+        <div class="bg-gallery-scroll" id="bgGalleryGrid">
+          <!-- Loaded via /api/backgrounds -->
+          <div class="bg-thumb-skeleton"></div>
+        </div>
+      </div>
+
+      <!-- Background Blur & Darkness -->
+      <div class="control-grid-2">
+        <div class="control-group">
+          <div class="control-label-row">
+            <span>Blur</span>
+            <span class="value-chip" id="valBgBlur">0px</span>
+          </div>
+          <input type="range" id="sliderBgBlur" min="0" max="30" step="1" value="0">
+        </div>
+
+        <div class="control-group">
+          <div class="control-label-row">
+            <span>Darkness</span>
+            <span class="value-chip" id="valBgDarkness">25%</span>
+          </div>
+          <input type="range" id="sliderBgDarkness" min="0" max="0.8" step="0.05" value="0.25">
+        </div>
+      </div>
+
+      <!-- Background Motion Effect -->
+      <div class="control-group">
+        <label class="control-label">
+          <span>Background Motion</span>
+        </label>
+        <select id="selectBgMotion" class="select-input">
+          <option value="zoom" selected>Slow Cinematic Zoom (1.12x)</option>
+          <option value="static">Static (Still Image)</option>
+        </select>
+      </div>
+
+      <!-- Section 4: Lyrics Timing Delay / Advance -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span><i class="fa-solid fa-stopwatch"></i> Lyrics Timing Offset</span>
+          <span class="value-chip" id="valLyricDelay">-0.30s</span>
+        </div>
+        <div class="slider-with-reset">
+          <input type="range" id="sliderLyricDelay" min="-3.0" max="3.0" step="0.05" value="-0.3">
+          <button type="button" class="btn-reset-slider" id="btnResetDelay" title="Reset to default -0.30s">
+            <i class="fa-solid fa-rotate-left"></i>
+          </button>
+        </div>
+        <div class="timing-subtext">
+          <span>-3.0s (Early)</span>
+          <span>0.0s</span>
+          <span>+3.0s (Late)</span>
+        </div>
+      </div>
+
+      <!-- Section 5: 3D Spatial Audio & 60 FPS -->
+      <div class="control-group toggle-card">
+        <div class="toggle-card-header">
+          <div class="toggle-title">
+            <i class="fa-solid fa-headphones"></i> 3D Spatial Audio
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="chk3dAudio">
+            <span class="slider-toggle"></span>
+          </label>
+        </div>
+
+        <div class="toggle-body" id="body3dAudio" style="display: none;">
+          <div class="control-group" style="margin-top: 10px; margin-bottom: 0;">
+            <label class="control-label"><span>Spatial Sound Style</span></label>
+            <select id="select3dSoundStyle" class="select-input">
+              <option value="orbit" selected>8D Orbit (Circular Pan)</option>
+              <option value="wide">Ultra Wide Stereo</option>
+              <option value="concert">Concert Hall Reverb</option>
+              <option value="slow">Slow Motion Orbit</option>
+              <option value="cyber">Cyber Bass Boost</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- FPS Selector (60 FPS default) -->
+      <div class="control-group">
+        <div class="control-label-row">
+          <span><i class="fa-solid fa-gauge-high"></i> Video Framerate</span>
+          <span class="badge-fps">Default: 60 FPS</span>
+        </div>
+        <select id="selectFps" class="select-input">
+          <option value="60" selected>60 FPS (Silky Smooth Motion — Recommended)</option>
+          <option value="30">30 FPS (Standard)</option>
+        </select>
+      </div>
+
+      <!-- Big Export Action Button -->
+      <div class="export-box">
+        <button class="btn btn-primary btn-glow btn-export-large" id="btnExportBottom">
+          <i class="fa-solid fa-film"></i>
+          <span>Render 9:16 Shorts Video</span>
+        </button>
+        <p class="export-note">
+          <i class="fa-solid fa-bolt"></i> Encodes 1080x1920 60fps MP4 with hardware acceleration (RTX NVENC / libx264).
+        </p>
+      </div>
+
+    </aside>
+
+  </main>
+
+  <!-- Audio Element for Streaming & Preview -->
+  <audio id="nativeAudio" preload="auto"></audio>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Render Progress & Download Modal -->
+  <div class="render-modal-backdrop" id="renderModal" style="display: none;">
+    <div class="render-modal-card">
+      
+      <!-- In-Progress View -->
+      <div id="renderInProgressView">
+        <div class="render-spinner-ring">
+          <i class="fa-solid fa-film fa-spin-pulse"></i>
+        </div>
+        <h3 class="render-modal-title" id="renderStatusTitle">Rendering 9:16 Shorts Video...</h3>
+        <p class="render-modal-sub" id="renderStatusSubtitle">Processing audio cut, ASS sliding lyrics &amp; 60fps video...</p>
+        
+        <div class="render-progress-bar">
+          <div class="render-progress-fill" id="renderProgressFill" style="width: 5%;"></div>
+        </div>
+        <div class="render-percent-text" id="renderPercentLabel">5%</div>
+        <div class="render-warning-note">Please keep this tab open while FFmpeg renders the MP4.</div>
+      </div>
+
+      <!-- Success View -->
+      <div id="renderSuccessView" style="display: none;">
+        <div class="render-success-icon">
+          <i class="fa-solid fa-circle-check"></i>
+        </div>
+        <h3 class="render-modal-title">9:16 Short Video Ready!</h3>
+        <p class="render-modal-sub">Your vertical lyric video has been successfully generated.</p>
+
+        <!-- Video Player Preview -->
+        <div class="video-preview-wrapper-vertical">
+          <video id="renderedVideoPlayer" controls playsinline></video>
+        </div>
+
+        <div class="render-success-actions">
+          <a id="btnDownloadVideo" href="#" download class="btn btn-primary btn-glow btn-lg">
+            <i class="fa-solid fa-download"></i> Download MP4 Video
+          </a>
+          <button id="btnCloseRenderModal" class="btn btn-secondary btn-lg">
+            Close &amp; Edit More
+          </button>
+        </div>
+      </div>
+
+      <!-- Failed View -->
+      <div id="renderFailView" style="display: none;">
+        <div class="render-fail-icon">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+        </div>
+        <h3 class="render-modal-title">Rendering Encountered an Error</h3>
+        <p class="render-modal-sub" id="renderFailMsg">Failed to encode video.</p>
+        <button id="btnRetryRender" class="btn btn-secondary">
+          Close &amp; Check Settings
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Client Application Script -->
+  <script src="shorts.js?v=1.0"></script>
+</body>
+</html>
